@@ -18,121 +18,133 @@ class Variable:
         
         # Depth-first traversal
         if not self.is_leaf:
-            op, op_vars = self.prev[0], self.prev[1]
-            op_vars_local_deriv = op.derivative(*op_vars)
+            fn, fn_vars = self.prev[0], self.prev[1]
+            fn_vars_local_deriv = fn.df(*fn_vars)
             
-            for i in range(len(op_vars)):
+            for i in range(len(fn_vars)):
 
                 # Chain rule
                 if len(self.shape) >= 1:
-                    op_var_grad = op_vars_local_deriv[i] @ self.grad 
+                    fn_var_grad = fn_vars_local_deriv[i] @ self.grad 
                 else:
-                    op_var_grad = op_vars_local_deriv[i] * self.grad 
+                    fn_var_grad = fn_vars_local_deriv[i] * self.grad 
                 
-                # print(op_vars_local_deriv[i], self.grad)
-                op_vars[i].backward(op_var_grad)
+                fn_vars[i].backward(fn_var_grad)
 
 
     def __neg__(self):
-        return Negate()(self)
+        return Neg()(self)
 
     def __add__(self, x2):
         return Add()(self, x2)
 
     def __mul__(self, x2):
-        return Multiply()(self, x2)
+        return Mul()(self, x2)
+
+    def sum(self):
+        return Sum()(self)
 
 
-class UnaryOperator(ABC):
+class Function(ABC):
     
-    def __call__(self, x: Variable) -> Variable:
-        y_data = self.forward(x)
+    def __call__(self, *args: Variable) -> Variable:
+        y_data = self.f(*args)
         y = Variable(y_data)
         y.is_leaf = False
-        y.prev = (self, [x])
+        y.prev = [self, args]
         return y
 
     @abstractmethod
-    def forward(self, x: Variable) -> np.ndarray:
+    def f(self, *args: Variable) -> np.ndarray:
         ...
 
     @abstractmethod
-    def derivative(self, x: Variable) -> list[np.ndarray]:
+    def df(self, *args: Variable) -> list[np.ndarray]:
+        # Jacobian
         ...
 
 
-class BinaryOperator(ABC):
-    
-    def __call__(self, x1: Variable, x2: Variable) -> Variable:
-        y_data = self.forward(x1, x2)
-        y = Variable(y_data)
-        y.is_leaf = False
-        y.prev = [self, [x1, x2]]
-        return y
+class Neg(Function):
 
-    @abstractmethod
-    def forward(self, x1: Variable, x2: Variable) -> np.ndarray:
-        ...
-
-    @abstractmethod
-    def derivative(self, x1: Variable, x2: Variable) -> list[np.ndarray, np.ndarray]:
-        ...
-
-
-class Negate(UnaryOperator):
-
-    def forward(self, x: Variable) -> np.ndarray:
+    def f(self, x):
         return -x.data
 
-    def derivative(self, x: Variable) -> list[np.ndarray]:
+    def df(self, x):
         dx = np.eye(x.data.flatten().shape[0]) * (-1)
         dx = dx.reshape(x.shape + x.shape)
-        return dx
+        return [dx]
 
 
-class Sum(UnaryOperator):
+class Sum(Function):
 
-    def forward(self, x: Variable) -> np.ndarray:
+    def f(self, x):
         return x.data.sum()
 
-    def derivative(self, x: Variable) -> list[np.ndarray]:
+    def df(self, x):
         dx = np.ones_like(x.data)
-        return dx
+        return [dx]
 
 
-class Add(BinaryOperator):
+class Add(Function):
 
-    def forward(self, x1: Variable, x2: Variable) -> np.ndarray:
+    def f(self, x1, x2):
         return x1.data + x2.data
 
-    def derivative(self, x1: Variable, x2: Variable) -> list[np.ndarray, np.ndarray]:
+    def df(self, x1, x2):
         dx1 = np.eye(x1.data.flatten().shape[0])
         dx1 = dx1.reshape(x1.shape + x1.shape)
-
         dx2 = np.eye(x2.data.flatten().shape[0])
         dx2 = dx2.reshape(x2.shape + x2.shape)
-
         return [dx1, dx2]
 
 
-class Multiply(BinaryOperator):
+class Sub(Function):
 
-    def forward(self, x1: Variable, x2: Variable) -> np.ndarray:
+    def f(self, x1, x2):
+        return x1.data - x2.data
+
+    def df(self, x1, x2):
+        dx1 = np.eye(x1.data.flatten().shape[0])
+        dx1 = dx1.reshape(x1.shape + x1.shape)
+        dx2 = np.eye(x2.data.flatten().shape[0]) * (-1)
+        dx2 = dx2.reshape(x2.shape + x2.shape)
+        return [dx1, dx2]
+
+
+class Mul(Function):
+
+    def f(self, x1, x2):
         return x1.data * x2.data
 
-    def derivative(self, x1: Variable, x2: Variable) -> list[np.ndarray, np.ndarray]:
-
+    def df(self, x1, x2):
         dx1 = np.diag(x2.data.flatten())
         dx1 = dx1.reshape(x2.shape + x1.shape)
-
         dx2 = np.diag(x1.data.flatten())
         dx2 = dx2.reshape(x1.shape + x2.shape)
-
         return [dx1, dx2]
 
 
+class Div(Function):
+
+    def f(self, x1, x2):
+        return x1.data / x2.data
+
+    def df(self, x1, x2):
+        dx1 = 1.0 / np.diag(x2.data.flatten())
+        dx1 = dx1.reshape(x2.shape + x1.shape)
+        dx2 = (-1.0 / (np.diag(x2.data.flatten()) ** 2)) * np.diag(x1.data.flatten())
+        dx2 = dx2.reshape(x1.shape + x2.shape)
+        return [dx1, dx2]
 
 
+class Tanh(Function):
+
+    def f(self, x):
+        return np.tanh(x)
+
+    def df(self, x):
+        dx = np.diag(np.flatten(1 - np.tanh(x)**2))
+        return [dx]
 
 
 
@@ -143,7 +155,7 @@ if __name__ == '__main__':
     b = Variable(np.array([3., 3.]))
      
     c = a * b
-    o = Sum()(c)
+    o = c.sum()
     print(o.data)
 
     o.backward()

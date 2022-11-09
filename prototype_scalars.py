@@ -16,116 +16,96 @@ class Variable:
         
         # Depth-first traversal
         if not self.is_leaf:
-            op, op_vars = self.prev[0], self.prev[1]
-            op_vars_local_deriv = op.derivative(*op_vars)
+            fn, fn_vars = self.prev[0], self.prev[1]
+            fn_vars_local_deriv = fn.df(*fn_vars)
             
-            for i in range(len(op_vars)):
-                op_var_grad = self.grad * op_vars_local_deriv[i]  # Chain rule
-                op_vars[i].backward(op_var_grad)
+            for i in range(len(fn_vars)):
+                fn_var_grad = self.grad * fn_vars_local_deriv[i]  # Chain rule
+                fn_vars[i].backward(fn_var_grad)
 
 
     def __neg__(self):
-        return Negate()(self)
+        return Neg()(self)
 
     def __add__(self, x2):
         return Add()(self, x2)
 
     def __sub__(self, x2):
-        return Subtract()(self, x2)
+        return Sub()(self, x2)
 
     def __mul__(self, x2):
-        return Multiply()(self, x2)
+        return Mul()(self, x2)
 
     def __truediv__(self, x2):
-        return Divide()(self, x2)
+        return Div()(self, x2)
 
 
-class UnaryOperator(ABC):
+class Function(ABC):
     
-    def __call__(self, x: Variable) -> Variable:
-        y_data = self.forward(x)
+    def __call__(self, *args: Variable) -> Variable:
+        y_data = self.f(*args)
         y = Variable(y_data)
         y.is_leaf = False
-        y.prev = [self, [x]]
+        y.prev = [self, args]
         return y
 
     @abstractmethod
-    def forward(self, x: Variable) -> float:
+    def f(self, *args: Variable) -> float:
         ...
 
     @abstractmethod
-    def derivative(self, x: Variable) -> list[float]:
+    def df(self, *args: Variable) -> list[float]:
         ...
 
 
-class BinaryOperator(ABC):
-    
-    def __call__(self, x1: Variable, x2: Variable) -> Variable:
-        y_data = self.forward(x1, x2)
-        y = Variable(y_data)
-        y.is_leaf = False
-        y.prev = [self, [x1, x2]]
-        return y
+class Neg(Function):
 
-    @abstractmethod
-    def forward(self, x1: Variable, x2: Variable) -> float:
-        ...
-
-    @abstractmethod
-    def derivative(self, x1: Variable, x2: Variable) -> list[float, float]:
-        ...
-
-
-class Negate(UnaryOperator):
-
-    def forward(self, x: Variable) -> float:
+    def f(self, x):
         return -x.data
 
-    def derivative(self, x: Variable) -> list[float]:
+    def df(self, x):
         return [-1.0]
 
 
-class Add(BinaryOperator):
+class Add(Function):
 
-    def forward(self, x1: Variable, x2: Variable) -> float:
+    def f(self, x1, x2):
         return x1.data + x2.data
 
-    def derivative(self, x1: Variable, x2: Variable) -> list[float, float]:
+    def df(self, x1, x2):
         return [1.0, 1.0]
 
 
-class Subtract(BinaryOperator):
+class Sub(Function):
 
-    def forward(self, x1: Variable, x2: Variable) -> float:
+    def f(self, x1, x2):
         return x1.data - x2.data
 
-    def derivative(self, x1: Variable, x2: Variable) -> list[float, float]: 
+    def df(self, x1, x2): 
         return [1.0, -1.0]
 
 
-class Multiply(BinaryOperator):
+class Mul(Function):
 
-    def forward(self, x1: Variable, x2: Variable) -> float:
+    def f(self, x1, x2):
         return x1.data * x2.data
 
-    def derivative(self, x1: Variable, x2: Variable) -> list[float, float]:
+    def df(self, x1, x2):
         return [x2.data, x1.data]
 
 
-class Divide(BinaryOperator):
+class Div(Function):
 
-    def forward(self, x1: Variable, x2: Variable) -> float:
+    def f(self, x1, x2):
         return x1.data / x2.data
 
-    def derivative(self, x1: Variable, x2: Variable) -> list[float, float]:
-        return [1 / x2.data, - 1 / (x1.data ** 2)]
+    def df(self, x1, x2):
+        return [1.0 / x2.data, (-1.0 / (x2.data ** 2) * x1.data)]
     
-
 
 
 
 if __name__ == '__main__':
-
     
     a = Variable(3.0)
     b = Variable(2.0)
