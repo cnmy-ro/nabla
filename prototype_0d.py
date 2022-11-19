@@ -17,7 +17,7 @@ class Variable:
         # Depth-first traversal
         if not self.is_leaf:
             fn, fn_vars = self.prev[0], self.prev[1]
-            fn_vars_local_deriv = fn.df(*fn_vars)
+            fn_vars_local_deriv = fn.dfx(*fn_vars)
             
             for i in range(len(fn_vars)):
                 fn_var_grad = self.grad * fn_vars_local_deriv[i]  # Chain rule
@@ -43,63 +43,63 @@ class Variable:
 class Function(ABC):
     
     def __call__(self, *args: Variable) -> Variable:
-        y_data = self.f(*args)
+        y_data = self.fx(*args)
         y = Variable(y_data)
         y.is_leaf = False
         y.prev = [self, args]
         return y
 
     @abstractmethod
-    def f(self, *args: Variable) -> float:
+    def fx(self, *args: Variable) -> float:
         ...
 
     @abstractmethod
-    def df(self, *args: Variable) -> list[float]:
+    def dfx(self, *args: Variable) -> list[float]:
         ...
 
 
 class Neg(Function):
 
-    def f(self, x):
+    def fx(self, x):
         return -x.data
 
-    def df(self, x):
+    def dfx(self, x):
         return [-1.0]
 
 
 class Add(Function):
 
-    def f(self, x1, x2):
+    def fx(self, x1, x2):
         return x1.data + x2.data
 
-    def df(self, x1, x2):
+    def dfx(self, x1, x2):
         return [1.0, 1.0]
 
 
 class Sub(Function):
 
-    def f(self, x1, x2):
+    def fx(self, x1, x2):
         return x1.data - x2.data
 
-    def df(self, x1, x2): 
+    def dfx(self, x1, x2): 
         return [1.0, -1.0]
 
 
 class Mul(Function):
 
-    def f(self, x1, x2):
+    def fx(self, x1, x2):
         return x1.data * x2.data
 
-    def df(self, x1, x2):
+    def dfx(self, x1, x2):
         return [x2.data, x1.data]
 
 
 class Div(Function):
 
-    def f(self, x1, x2):
+    def fx(self, x1, x2):
         return x1.data / x2.data
 
-    def df(self, x1, x2):
+    def dfx(self, x1, x2):
         return [1.0 / x2.data, (-1.0 / (x2.data ** 2) * x1.data)]
     
 
