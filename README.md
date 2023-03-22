@@ -1,2 +1,3 @@
-# cyrograd
-Automatic differentiation engine
+# gradcore
+
+Minimal implementation of reverse mode automatic differentiation.
