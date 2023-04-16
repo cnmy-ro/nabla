@@ -1,5 +1,9 @@
 # `gradcore`
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/cnmy-ro/gradcore/main/docs/logo.png">
+</p>
+
 Minimal implementation of reverse-mode automatic differentiation.
 
 - Python version:
