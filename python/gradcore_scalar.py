@@ -40,7 +40,7 @@ class Variable:
         return Div()(self, x2)
 
 
-class Function(ABC):
+class Operator(ABC):
     
     def __call__(self, *args: Variable) -> Variable:
         y_data = self.fx(*args)
@@ -58,7 +58,7 @@ class Function(ABC):
         ...
 
 
-class Neg(Function):
+class Neg(Operator):
 
     def fx(self, x):
         return -x.data
@@ -67,7 +67,7 @@ class Neg(Function):
         return [-1.0]
 
 
-class Add(Function):
+class Add(Operator):
 
     def fx(self, x1, x2):
         return x1.data + x2.data
@@ -76,7 +76,7 @@ class Add(Function):
         return [1.0, 1.0]
 
 
-class Sub(Function):
+class Sub(Operator):
 
     def fx(self, x1, x2):
         return x1.data - x2.data
@@ -85,7 +85,7 @@ class Sub(Function):
         return [1.0, -1.0]
 
 
-class Mul(Function):
+class Mul(Operator):
 
     def fx(self, x1, x2):
         return x1.data * x2.data
@@ -94,7 +94,7 @@ class Mul(Function):
         return [x2.data, x1.data]
 
 
-class Div(Function):
+class Div(Operator):
 
     def fx(self, x1, x2):
         return x1.data / x2.data

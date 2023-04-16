@@ -2,6 +2,9 @@
 
 Minimal implementation of reverse-mode automatic differentiation.
 
-- Python version (complete, supplemented by a demo on NN regressor training): `python/gradcore.py`
+- Python version:
+	-`python/gradcore.py`: Autodiff implementation
+	-`python/demo.py`: Demonstration on training a simple regression network using `gradcore`.
 
-- C version (in progress): `c/src/gradcore.c`
+- C version (in progress): 
+	-`c/src/gradcore.c`: Autodiff implementation
