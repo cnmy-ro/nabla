@@ -1,5 +1,6 @@
 """ 
-Demonstration of the universal approximation capability of an NN implemented using `gradcore`.
+Demonstration of the universal approximation capability of an NN.
+Built using `gradcore`.
 """
 
 import numpy as np
