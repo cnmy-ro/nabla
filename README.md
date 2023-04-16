@@ -1,8 +1,10 @@
-# `gradcore`
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/cnmy-ro/gradcore/main/docs/logo.png">
 </p>
+
+
+# `gradcore`
+
 
 Minimal implementation of reverse-mode automatic differentiation.
 
