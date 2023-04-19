@@ -7,12 +7,12 @@
 // ---
 // ndarrays
 
-struct Vector
+struct Array1d
 {
 	float data[128];
 	int shape[1];
 };
-struct Matrix
+struct Array2d
 {
 	float data[128][128];
 	int shape[2];

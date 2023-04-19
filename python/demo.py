@@ -1,14 +1,13 @@
 """ 
 Demonstration of the universal approximation capability of an NN.
-Built using `gradcore`.
+Built using `nabla`.
 """
 
 import numpy as np
-import time
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from gradcore import Tensor, Operator
+from nabla import Tensor, Operator
 
 
 
@@ -25,10 +24,10 @@ def generate_data():
     xtrain = np.stack((xtrain, np.ones_like(xtrain)), axis=1)
     xtest = np.stack((xtest, np.ones_like(xtest)), axis=1)
 
-    # Add extra dims to xtrain, ytrain, xtest since gradcore requires 2D arrays
+    # Add extra dims to xtrain, ytrain, xtest since nabla requires 2D arrays
     xtrain = np.expand_dims(xtrain, axis=2)
-    xtest = np.expand_dims(xtest, axis=2)
     ytrain = np.expand_dims(np.expand_dims(ytrain, axis=1), axis=2)
+    xtest = np.expand_dims(xtest, axis=2)
 
     return xtrain, ytrain, xtest, ytest
 
@@ -41,8 +40,8 @@ def model(x, params):
 
 def init_params():
     params = {
-    'w1': Tensor(np.random.normal(size=(8, 2))),
-    'w2': Tensor(np.random.normal(size=(1, 8)))
+    'w1': Tensor(np.random.normal(size=(8, 2)), requires_grad=True),
+    'w2': Tensor(np.random.normal(size=(1, 8)), requires_grad=True)
     }
     return params
 
@@ -76,18 +75,16 @@ def run_demo():
     fig, ax = plt.subplots()
     testgt_plot = plt.plot(xtest[:, 0].squeeze(), ytest, c='tab:blue')[0]
     testpred_plot = plt.plot(xtest[:, 0].squeeze(), ytestpred, c='tab:orange')[0]
-    plt.ion()
-    plt.show()
+    plt.ion(); plt.show()    
 
     for epoch in tqdm(range(1, 50)):
 
         for i in range(xtrain.shape[0]):
             
-            xtrain_i = Tensor(xtrain[i])
-            ytrain_i = Tensor(ytrain[i])
+            xtrain_i, ytrain_i = Tensor(xtrain[i]), Tensor(ytrain[i])
             ypred_i = model(xtrain_i, params)
 
-            loss = (ypred_i - ytrain_i) ** Tensor(np.array([[2.]]), requires_grad=False)
+            loss = (ypred_i - ytrain_i) ** Tensor(np.array(2.))
             loss.backward()
             params = update_params(params, lr=0.5)
             params = zero_grad(params)                        
@@ -95,7 +92,6 @@ def run_demo():
         ytestpred = infer(params, xtest)
         testpred_plot.set_ydata(ytestpred)
         fig.canvas.draw()
-        time.sleep(0.005)
         fig.canvas.flush_events()    
 
 

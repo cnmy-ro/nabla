@@ -1,3 +1,4 @@
+from typing import Union, List
 from abc import ABC, abstractmethod
 import numpy as np
 
@@ -5,14 +6,14 @@ import numpy as np
 
 class Tensor:
     
-    def __init__(self, data: np.ndarray, requires_grad: bool = True) -> None:
+    def __init__(self, data: np.ndarray, requires_grad: bool = False) -> None:
         self.data = data
         self.grad = np.zeros_like(data)  # droot / dself
         self.shape = data.shape
         self.requires_grad = requires_grad
         self.prev = None
     
-    def backward(self, grad: np.ndarray = 1.0) -> None:
+    def backward(self, grad: np.ndarray = np.array([1.])) -> None:
 
         self.grad += grad
         
@@ -74,7 +75,7 @@ class Operator(ABC):
         ...
 
     @abstractmethod
-    def vjp(self, grad: np.ndarray, result: Tensor, *args: Tensor): # -> list[np.ndarray]:
+    def vjp(self, grad: np.ndarray, result: Tensor, *args: Tensor) -> List[np.ndarray]:
         """
         Vector-Jacobian product.
         Implicitly computes J-dot-grad without having to materialize the massive J.
@@ -85,7 +86,7 @@ class Operator(ABC):
 class Neg(Operator):
 
     def fx(self, x):
-        return Tensor(-x.data)
+        return Tensor(-x.data, requires_grad=True)
 
     def vjp(self, grad, result, x):
         return [-grad]
@@ -94,7 +95,7 @@ class Neg(Operator):
 class Add(Operator):
 
     def fx(self, x1, x2):
-        return Tensor(x1.data + x2.data)
+        return Tensor(x1.data + x2.data, requires_grad=True)
 
     def vjp(self, grad, result, x1, x2):
         return [grad, grad]
@@ -103,7 +104,7 @@ class Add(Operator):
 class Sub(Operator):
 
     def fx(self, x1, x2):
-        return Tensor(x1.data - x2.data)
+        return Tensor(x1.data - x2.data, requires_grad=True)
 
     def vjp(self, grad, result, x1, x2):
         return [grad, -grad]
@@ -112,7 +113,7 @@ class Sub(Operator):
 class Mul(Operator):
 
     def fx(self, x1, x2):
-        return Tensor(x1.data * x2.data)
+        return Tensor(x1.data * x2.data, requires_grad=True)
 
     def vjp(self, grad, result, x1, x2):
         return [grad * x2.data, grad * x1.data]
@@ -121,7 +122,7 @@ class Mul(Operator):
 class Div(Operator):
 
     def fx(self, x1, x2):
-        return Tensor(x1.data / x2.data)
+        return Tensor(x1.data / x2.data, requires_grad=True)
 
     def vjp(self, grad, result, x1, x2):
         return [grad * (1. / x2.data), grad * x1.data * (-1. / (x2.data**2))]
@@ -130,18 +131,16 @@ class Div(Operator):
 class Pow(Operator):
 
     def fx(self, x1, x2):
-        return Tensor(x1.data ** x2.data)
+        return Tensor(x1.data ** x2.data, requires_grad=True)
 
     def vjp(self, grad, result, x1, x2):
-        # print(x1.data)
-        # return [grad * x2.data * x1.data ** (x2.data - 1.), grad * np.log(x1.data) * x1.data ** x2.data]
         return [grad * x2.data * x1.data ** (x2.data - 1.)]
 
 
 class Dot(Operator):
 
     def fx(self, x1, x2):
-        return Tensor(x1.data @ x2.data)
+        return Tensor(x1.data @ x2.data, requires_grad=True)
 
     def vjp(self, grad, result, x1, x2):
         return [grad @ x2.data.T, x1.data.T @ grad]
@@ -150,7 +149,7 @@ class Dot(Operator):
 class Sum(Operator):
 
     def fx(self, x):
-        return Tensor(x.data.sum())
+        return Tensor(x.data.sum(), requires_grad=True)
 
     def vjp(self, grad, result, x):
         return [grad]
@@ -159,10 +158,10 @@ class Sum(Operator):
 class ReLU(Operator):
 
     def fx(self, x):
-        return Tensor(np.maximum(x.data, np.zeros_like(x.data)))
+        return Tensor(np.maximum(x.data, np.zeros_like(x.data)), requires_grad=True)
 
     def vjp(self, grad, result, x):
-        return [grad * (result.data > 0.0).astype(float)]
+        return [grad * (result.data > 0.).astype(float)]
 
 
 class Sigmoid(Operator):
@@ -171,7 +170,7 @@ class Sigmoid(Operator):
         return 1. / (1. + np.exp(-x))
 
     def fx(self, x):
-        return Tensor(self._sigma(x.data))
+        return Tensor(self._sigma(x.data), requires_grad=True)
 
     def vjp(self, grad, result, x):
         return [grad * self._sigma(x.data) * (1. - self._sigma(x.data))]
@@ -180,7 +179,7 @@ class Sigmoid(Operator):
 class Tanh(Operator):
 
     def fx(self, x):
-        return Tensor(np.tanh(x.data))
+        return Tensor(np.tanh(x.data), requires_grad=True)
 
     def vjp(self, grad, result, x):
         return [grad * (1. - np.tanh(x.data)**2)]
