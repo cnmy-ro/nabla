@@ -13,11 +13,11 @@ class Variable:
     def backward(self, grad: float = 1.0):
         self.grad += grad        
         if not self.is_leaf: # Depth-first tree walk
-            fn, fn_vars = self.prev[0], self.prev[1]
-            fn_vars_local_deriv = fn.dfx(*fn_vars)            
-            for i in range(len(fn_vars)):
-                fn_var_grad = self.grad * fn_vars_local_deriv[i]  # Chain rule
-                fn_vars[i].backward(fn_var_grad)
+            op, op_args = self.prev[0], self.prev[1]
+            op_args_local_deriv = op.dfx(*op_args)            
+            for i in range(len(op_args)):
+                op_arg_grad = self.grad * op_args_local_deriv[i]  # Chain rule
+                op_args[i].backward(op_arg_grad)
 
     def __neg__(self): return Neg()(self)
     def __add__(self, x2): return Add()(self, x2)
