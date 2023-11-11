@@ -1,2 +1,2 @@
-gcc ./src/test_nabla.c ./src/nabla.c -o test -lm
+gcc ./src/test_nabla_scalar.c  -o test -lm
 ./test

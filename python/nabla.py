@@ -18,7 +18,7 @@ class Tensor:
         self.grad += grad        
         if self.prev is not None:  # Depth-first tree traversal
             op, op_args = self.prev[0], self.prev[1]
-            op_args_vjp = op.vjp(self.grad, self, *op_args)
+            op_args_vjp = op.vjp(self, *op_args)
             for i in range(len(op_args)):
                 if op_args[i].requires_grad:
                     op_arg_grad = op_args_vjp[i]
@@ -46,18 +46,17 @@ class Operator(ABC):
 
     @abstractmethod
     def fx(self, *args: Tensor) -> np.ndarray:
-        """ Forward function """
+        """ Forward evaluation function """
         ...
 
     @abstractmethod
-    def vjp(self, grad: np.ndarray, result: Tensor, *args: Tensor) -> List[np.ndarray]:
+    def vjp(self, eval: Tensor, *args: Tensor) -> List[np.ndarray]:
         """
         Vector-Jacobian product.
         Implicitly computes J-dot-grad without having to materialize the massive J.
         
         Args:
-            grad: grad of the result tensor
-            result: result tensor of this op
+            eval: result tensor of this op (i.e. of the fx function)
             *args: argument tensors to this op
         Returns:
             grads of this op's argument tensors
@@ -68,49 +67,49 @@ class Operator(ABC):
 # Unary ops
 
 class Neg(Operator):
-    def fx(self, x):                return -x.data
-    def vjp(self, grad, result, x): return [-grad]
+    def fx(self, x):        return -x.data
+    def vjp(self, eval, x): return [-eval.grad]
 
 class Sum(Operator):
-    def fx(self, x):                return x.data.sum()
-    def vjp(self, grad, result, x): return [grad]
+    def fx(self, x):        return x.data.sum()
+    def vjp(self, eval, x): return [eval.grad]
 
 class ReLU(Operator):
-    def fx(self, x):                return np.maximum(x.data, np.zeros_like(x.data))
-    def vjp(self, grad, result, x): return [grad * (result.data > 0.).astype(float)]
+    def fx(self, x):        return np.maximum(x.data, np.zeros_like(x.data))
+    def vjp(self, eval, x): return [eval.grad * (eval.data > 0.).astype(float)]
 
 class Sigmoid(Operator):
-    def _sigma(self, x):            return 1. / (1. + np.exp(-x))
-    def fx(self, x):                return self._sigma(x.data)
-    def vjp(self, grad, result, x): return [grad * self._sigma(x.data) * (1. - self._sigma(x.data))]
+    def _sigma(self, x):    return 1. / (1. + np.exp(-x))
+    def fx(self, x):        return self._sigma(x.data)
+    def vjp(self, eval, x): return [eval.grad * self._sigma(x.data) * (1. - self._sigma(x.data))]
 
 class Tanh(Operator):
-    def fx(self, x):                return np.tanh(x.data)
-    def vjp(self, grad, result, x): return [grad * (1. - np.tanh(x.data)**2)]
+    def fx(self, x):        return np.tanh(x.data)
+    def vjp(self, eval, x): return [eval.grad * (1. - np.tanh(x.data)**2)]
 
 # ---
 # Binary ops
 
 class Add(Operator):
-    def fx(self, x1, x2):                return x1.data + x2.data
-    def vjp(self, grad, result, x1, x2): return [grad, grad]
+    def fx(self, x1, x2):        return x1.data + x2.data
+    def vjp(self, eval, x1, x2): return [eval.grad, eval.grad]
 
 class Sub(Operator):
-    def fx(self, x1, x2):                return x1.data - x2.data
-    def vjp(self, grad, result, x1, x2): return [grad, -grad]
+    def fx(self, x1, x2):        return x1.data - x2.data
+    def vjp(self, eval, x1, x2): return [eval.grad, -eval.grad]
 
 class Mul(Operator):
-    def fx(self, x1, x2):                return x1.data * x2.data
-    def vjp(self, grad, result, x1, x2): return [grad * x2.data, grad * x1.data]
+    def fx(self, x1, x2):        return x1.data * x2.data
+    def vjp(self, eval, x1, x2): return [eval.grad * x2.data, eval.grad * x1.data]
 
 class Div(Operator):
-    def fx(self, x1, x2):                return x1.data / x2.data
-    def vjp(self, grad, result, x1, x2): return [grad * (1. / x2.data), grad * x1.data * (-1. / (x2.data**2))]
+    def fx(self, x1, x2):        return x1.data / x2.data
+    def vjp(self, eval, x1, x2): return [eval.grad * (1. / x2.data), eval.grad * x1.data * (-1. / (x2.data**2))]
 
 class Pow(Operator):
-    def fx(self, x1, x2):                return x1.data ** x2.data
-    def vjp(self, grad, result, x1, x2): return [grad * x2.data * x1.data ** (x2.data - 1.)]
+    def fx(self, x1, x2):        return x1.data ** x2.data
+    def vjp(self, eval, x1, x2): return [eval.grad * x2.data * x1.data ** (x2.data - 1.)]
 
 class Dot(Operator):
-    def fx(self, x1, x2):                return x1.data @ x2.data
-    def vjp(self, grad, result, x1, x2): return [grad @ x2.data.T, x1.data.T @ grad]
+    def fx(self, x1, x2):        return x1.data @ x2.data
+    def vjp(self, eval, x1, x2): return [eval.grad @ x2.data.T, x1.data.T @ eval.grad]
