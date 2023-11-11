@@ -12,5 +12,6 @@ Minimal implementation of reverse-mode automatic differentiation.
 	- `python/nabla.py`: Core autodiff module
 	- `python/demo.py`: Demonstration on using `nabla` to build and train a simple NN regression model
 
-- C version (WIP): 
-	- `c/src/nabla.c` and `c/src/nabla.h`: Core autodiff library
+- C/C++ version (WIP):
+	- `c/src/nabla_scalar.h`: Scalar-only autodiff
+	- `cpp/src/nabla.h`: Core autodiff library based on Eigen

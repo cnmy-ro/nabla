@@ -29,37 +29,37 @@ public:
 class Operator
 {
 public:
-    void fx(Tensor* x, Tensor* eval);
-    void vjp(Tensor* eval, Tensor* x, MatrixXd grad_x);
+    void fx(Tensor* x, Tensor* y);
+    void vjp(Tensor* y, Tensor* x, MatrixXd grad_x);
 }
 
 
 class Add: public Operator
 {
 public:
-    void fx(Tensor* x1, Tensor* x2, Tensor* eval)
+    void fx(Tensor* x1, Tensor* x2, Tensor* y)
     {   
-        strcpy(eval->func_name, "add");
-        eval->data = x1->data + x2->data;
+        strcpy(y->func_name, "add");
+        y->data = x1->data + x2->data;
     }
-    void vjp(Tensor* eval, Tensor* x1, Tensor* x2, MatrixXd* grad_x1, MatrixXd* grad_x2)
+    void vjp(Tensor* y, Tensor* x1, Tensor* x2, MatrixXd* grad_x1, MatrixXd* grad_x2)
     {
-        *grad_x1 = eval->grad;
-        *grad_x2 = eval->grad;
+        *grad_x1 = y->grad;
+        *grad_x2 = y->grad;
     }
 }
 
 class Mul: public Operator
 {
 public:
-    void fx(Tensor* x1, Tensor* x2, Tensor* eval)
+    void fx(Tensor* x1, Tensor* x2, Tensor* y)
     {   
-        strcpy(eval->func_name, "mul");
-        *eval = x1->data * x2->data;
+        strcpy(y->func_name, "mul");
+        *y = x1->data * x2->data;
     }
-    void vjp(Tensor* eval, Tensor* x1, Tensor* x2, MatrixXd* grad_x1, MatrixXd* grad_x2)
+    void vjp(Tensor* y, Tensor* x1, Tensor* x2, MatrixXd* grad_x1, MatrixXd* grad_x2)
     {
-        *grad_x1 = eval->grad * x2->data;
-        *grad_x2 = eval->grad * x1->data;
+        *grad_x1 = y->grad * x2->data;
+        *grad_x2 = y->grad * x1->data;
     }
 }

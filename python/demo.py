@@ -13,11 +13,11 @@ from nabla import Tensor, Operator
 
 def generate_data():
     
-    xtrain = (np.random.rand(1000) - 0.5) * 2 * np.pi
-    noise = np.random.normal(0, 0.01, size=(1000,))
+    xtrain = (np.random.rand(1024) - 0.5) * 2 * np.pi
+    noise = np.random.normal(0, 0.01, size=(1024,))
     ytrain = np.sin(xtrain) + noise
 
-    xtest = np.linspace(-np.pi, np.pi, 1000)
+    xtest = np.linspace(-np.pi, np.pi, 1024)
     ytest = np.sin(xtest)
 
     # Dummy value "1" to use with learnable bias
