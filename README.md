@@ -9,9 +9,6 @@ Minimal implementation of reverse-mode automatic differentiation.
 
 - Python version:
 	- `nabla_python/nabla.py`: Core autodiff module	based on Numpy
+	- `examples`: Toy examples built using this module
 - C/C++ version (WIP):
 	- `nabla_cpp/nabla.h`: Core autodiff library based on Eigen
-- Toy examples using the module:
-	- `examples/regression.py`: Simple regression model
-	- `examples/vae.py`: Variational autoencoder
-	- `examples/gan.py`: Generative adversarial networks
