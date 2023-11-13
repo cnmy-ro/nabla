@@ -1,6 +1,5 @@
 """ 
-Demonstration of the universal approximation capability of an NN.
-Built using `nabla`.
+Regression model built with `nabla`.
 """
 
 import sys
@@ -11,6 +10,9 @@ from tqdm import tqdm
 sys.path.append("../nabla_python")
 from nabla import Tensor
 
+
+# ---
+# Utils
 
 def sample_data():
     
@@ -23,74 +25,71 @@ def sample_data():
     xtest = np.expand_dims(np.linspace(-np.pi, np.pi, 1024), axis=0)
     ytest = np.sin(xtest)
 
-    # Dummy value "1" to use with learnable bias
-    xtrain = np.concatenate((xtrain, np.ones_like(xtrain)), axis=0)
-    xtest = np.concatenate((xtest, np.ones_like(xtest)), axis=0)
-
-    # To Tensor
+    # To Tensor, shape (len, batch)
     xtrain, ytrain, xtest, ytest = Tensor(xtrain), Tensor(ytrain), Tensor(xtest), Tensor(ytest)
 
     return xtrain, ytrain, xtest, ytest
 
-def model(x, params):
-    z1 = params['w1'].dot(x)
-    a1 = z1.sigmoid()
-    z2 = params['w2'].dot(a1)
-    y = z2.tanh()          
-    return y
+class MLP:
+    def __init__(self):
+        self.params = {
+        'w1': Tensor(np.random.normal(size=(16, 1)), requires_grad=True),
+        'b1': Tensor(np.random.normal(size=(16, 1)), requires_grad=True),
+        'w2': Tensor(np.random.normal(size=(1, 16)), requires_grad=True),
+        'b2': Tensor(np.random.normal(size=(1, 1)), requires_grad=True),
+        }
+    def __call__(self, x):
+        a1 = (self.params['w1'].dot(x) + self.params['b1']).sigmoid()
+        y = (self.params['w2'].dot(a1) + self.params['b2']).tanh()
+        return y
 
-def init_model_params():
-    params = {
-    'w1': Tensor(np.random.normal(size=(16, 2)), requires_grad=True),
-    'w2': Tensor(np.random.normal(size=(1, 16)), requires_grad=True)
-    }
-    return params
-
-def update_params(params, lr):
-    for k in params.keys():
-        params[k].data = params[k].data - lr*params[k].grad
-    return params
-
-def zero_grad(params):
-    for k in params.keys():
-        params[k].grad = np.zeros_like(params[k].data)
-    return params
+def update_params_and_zero_grad(model, lr):
+    for param in model.params.values():
+        param.data = param.data - lr*param.grad
+        param.grad = np.zeros_like(param.data)
+    return model
 
 def mse_loss(pred, gt):
     loss = (pred - gt) ** Tensor(np.array(2.))
     loss = loss.sum() / Tensor(np.array(gt.shape[1]))
     return loss
 
-def run_demo():
+
+# ---
+# Main function
+
+def main():
     
     # Init model
-    params = init_model_params()
+    model = MLP()
 
     # Init viz
     fig, ax = plt.subplots()
     xtrain, ytrain, xtest, ytest = sample_data()    
-    ytestpred = model(xtest, params)
+    ytestpred = model(xtest)
     testgt_plot = plt.plot(xtest.data[0,:], ytest.data[0,:], c='tab:blue')[0]
     testpred_plot = plt.plot(xtest.data[0,:], ytestpred.data[0,:], c='tab:orange')[0]
     plt.ion(); plt.show()    
 
     # Training loop
-    for epoch in tqdm(range(1, 1000)):
+    for epoch in tqdm(range(1000)):
 
         # Update model
         xtrain, ytrain, xtest, ytest = sample_data()
-        ypred = model(xtrain, params)
+        ypred = model(xtrain)
         loss = mse_loss(ypred, ytrain)
         loss.backward()
-        params = update_params(params, lr=1e-1)
-        params = zero_grad(params)
+        model = update_params_and_zero_grad(model, lr=1e-1)
 
         # Test and viz
-        ytestpred = model(xtest, params)
+        ytestpred = model(xtest)
         testpred_plot.set_ydata(ytestpred.data[0,:])
         fig.canvas.draw()
         fig.canvas.flush_events()    
 
 
+# ---
+# Run
+
 if __name__ == '__main__':
-    run_demo()
+    main()

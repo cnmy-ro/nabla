@@ -1,6 +1,5 @@
 """ 
-Demonstration of the universal approximation capability of an NN.
-Built using `nabla`.
+Variational autoencoder built with `nabla`.
 """
 
 import sys
@@ -111,8 +110,10 @@ def update_params_and_zero_grad(model, lr):
         param.grad = np.zeros_like(param.grad)
     return model
 
+
 # ---
 # Main function
+
 def main():
 
     # Init model
@@ -156,5 +157,6 @@ def main():
 
 # ---
 # Run
+
 if __name__ == '__main__':
     main()
