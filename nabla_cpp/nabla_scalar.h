@@ -1,8 +1,12 @@
+/*
+Scalar prototype written purely in C.
+*/
+
 #include <string.h>
 
 
 // ---
-// Variable and backward()
+// Variable definition
 
 struct Variable
 {
@@ -23,6 +27,7 @@ struct Variable init_var(float data)
 	x.prev[1] = NULL;
 	return x;
 }
+
 
 // ---
 // Operators
@@ -54,6 +59,10 @@ void mul_dfx(struct Variable* x1, struct Variable* x2, float* dx)
 	*dx = x2->data;
 	*(dx + 1) = x1->data;
 };
+
+
+// ---
+// Backward function
 
 void backward(struct Variable* y, float grad)
 {	
