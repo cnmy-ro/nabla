@@ -14,3 +14,4 @@ Minimal implementation of reverse-mode automatic differentiation.
 - Toy examples using the module:
 	- `examples/regression.py`: Simple regression model
 	- `examples/vae.py`: Variational autoencoder
+	- `examples/gan.py`: Generative adversarial networks

@@ -9,20 +9,18 @@ class Tensor:
     
     def __init__(self, data: np.ndarray, requires_grad: bool = False):
         self.data = data
-        self.grad = np.zeros_like(data)  # d_root_tensor / d_self_tensor
-        self.shape = data.shape
         self.requires_grad = requires_grad
+        self.grad = np.zeros_like(data)  # d_root / d_self
         self.prev = None
+        self.shape = data.shape
     
     def backward(self, grad: np.ndarray = np.array([[1.]])):
         self.grad += grad
-        # print(self.data.shape, grad.shape)
         if self.prev is not None:  # Depth-first tree traversal
             op, op_args = self.prev[0], self.prev[1]
             op_args_vjp = op.vjp(self, *op_args)
             for i in range(len(op_args)):
                 if op_args[i].requires_grad:
-                    # print(op, op_args[i].shape)
                     op_arg_grad = op_args_vjp[i]
                     op_args[i].backward(op_arg_grad)
 
@@ -34,6 +32,8 @@ class Tensor:
     def __pow__(self, other):     return Pow()(self, other)
     def dot(self, other):         return Dot()(self, other)
     def sum(self):                return Sum()(self)
+    def mean(self):               return Sum()(self) / Tensor(np.prod(np.array(self.shape)))
+    def log(self):                return Log()(self)
     def relu(self):               return ReLU()(self)
     def sigmoid(self):            return Sigmoid()(self)
     def tanh(self):               return Tanh()(self)
@@ -41,6 +41,13 @@ class Tensor:
 class Operator(ABC):
     
     def __call__(self, *args: Tensor) -> Tensor:
+        
+        # Auto type-casting float/int into Tensor. Limitation: The 1st argument must be a Tensor (e.g. "Tensor + float")
+        args = list(args)
+        for i in range(len(args)):
+            if isinstance(args[i], float) or isinstance(args[i], int):
+                args[i] = Tensor(np.array(args[i]))
+
         y = self.fx(*args)
         y = Tensor(y, requires_grad=True)
         y.prev = [self, args]
@@ -82,6 +89,13 @@ class Sum(Operator):
         grad_x = sum_grads_across_batch(x, grad_x)
         return [grad_x]
 
+class Log(Operator):
+    def fx(self, x):     return np.log(x.data)
+    def vjp(self, y, x):
+        grad_x = y.grad * (1. / x.data)
+        grad_x = sum_grads_across_batch(x, grad_x)
+        return [grad_x]
+
 class ReLU(Operator):
     def fx(self, x):     return np.maximum(x.data, np.zeros_like(x.data))
     def vjp(self, y, x): 
@@ -108,42 +122,42 @@ class Tanh(Operator):
 # Binary ops
 
 class Add(Operator):
-    def fx(self, x1, x2):     return x1.data + x2.data
+    def fx(self, x1, x2): return x1.data + x2.data
     def vjp(self, y, x1, x2):
         grad_x1, grad_x2 = y.grad, y.grad
         grad_x1, grad_x2 = sum_grads_across_batch(x1, grad_x1), sum_grads_across_batch(x2, grad_x2)
         return [grad_x1, grad_x2]
 
 class Sub(Operator):
-    def fx(self, x1, x2):     return x1.data - x2.data
+    def fx(self, x1, x2): return x1.data - x2.data
     def vjp(self, y, x1, x2):
         grad_x1, grad_x2 = y.grad, -y.grad
         grad_x1, grad_x2 = sum_grads_across_batch(x1, grad_x1), sum_grads_across_batch(x2, grad_x2)
         return [grad_x1, grad_x2]
 
 class Mul(Operator):
-    def fx(self, x1, x2):     return x1.data * x2.data
+    def fx(self, x1, x2): return x1.data * x2.data
     def vjp(self, y, x1, x2):
         grad_x1, grad_x2 = y.grad * x2.data, y.grad * x1.data
         grad_x1, grad_x2 = sum_grads_across_batch(x1, grad_x1), sum_grads_across_batch(x2, grad_x2)
         return [grad_x1, grad_x2]
 
 class Div(Operator):
-    def fx(self, x1, x2):     return x1.data / x2.data
+    def fx(self, x1, x2): return x1.data / x2.data
     def vjp(self, y, x1, x2): 
         grad_x1, grad_x2 = y.grad * (1. / x2.data), y.grad * x1.data * (-1. / (x2.data**2))
         grad_x1, grad_x2 = sum_grads_across_batch(x1, grad_x1), sum_grads_across_batch(x2, grad_x2)
         return [grad_x1, grad_x2]
 
 class Pow(Operator):
-    def fx(self, x1, x2):     return x1.data**x2.data
+    def fx(self, x1, x2): return x1.data**x2.data
     def vjp(self, y, x1, x2):
         grad_x1, grad_x2 = y.grad * x2.data * x1.data**(x2.data - 1.), y.grad * np.log(x1.data) * x1.data**x2.data
         grad_x1, grad_x2 = sum_grads_across_batch(x1, grad_x1), sum_grads_across_batch(x2, grad_x2)
         return [grad_x1, grad_x2]
 
 class Dot(Operator):
-    def fx(self, x1, x2):     return x1.data @ x2.data
+    def fx(self, x1, x2): return x1.data @ x2.data
     def vjp(self, y, x1, x2): 
         grad_x1, grad_x2 = y.grad @ x2.data.T, x1.data.T @ y.grad
         grad_x1, grad_x2 = sum_grads_across_batch(x1, grad_x1), sum_grads_across_batch(x2, grad_x2)

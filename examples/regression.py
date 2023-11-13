@@ -43,15 +43,19 @@ class MLP:
         y = (self.params['w2'].dot(a1) + self.params['b2']).tanh()
         return y
 
-def update_params_and_zero_grad(model, lr):
+def update_params(model, lr):
     for param in model.params.values():
         param.data = param.data - lr*param.grad
+    return model
+
+def zero_grad(model):
+    for param in model.params.values():
         param.grad = np.zeros_like(param.data)
+        param.prev = None
     return model
 
 def mse_loss(pred, gt):
-    loss = (pred - gt) ** Tensor(np.array(2.))
-    loss = loss.sum() / Tensor(np.array(gt.shape[1]))
+    loss = ((pred - gt)**2).mean()
     return loss
 
 
@@ -79,10 +83,12 @@ def main():
         ypred = model(xtrain)
         loss = mse_loss(ypred, ytrain)
         loss.backward()
-        model = update_params_and_zero_grad(model, lr=1e-1)
+        model = update_params(model, lr=1e-1)
+        model = zero_grad(model)
 
         # Test and viz
         ytestpred = model(xtest)
+        model = zero_grad(model)
         testpred_plot.set_ydata(ytestpred.data[0,:])
         fig.canvas.draw()
         fig.canvas.flush_events()    

@@ -14,7 +14,7 @@ from nabla import Tensor
 
 # ---
 # Constants
-E = 2.718
+E = Tensor(np.array(2.718))
 
 
 # ---
@@ -22,7 +22,8 @@ E = 2.718
 LATENT_DIM = 2
 HIDDEN_DIM = 128
 BATCH_SIZE = 512
-ITERS = 1000
+ITERS = 200
+LR = 1e-3
 BETA = 1e1
 
 
@@ -42,14 +43,14 @@ def sample_data():
     return data_sample
 
 def sample_model(model):
-    latents = np.random.randn(LATENT_DIM, BATCH_SIZE)
-    latents = Tensor(latents)
-    model_sample = model.decode(latents)
+    z = Tensor(np.random.randn(LATENT_DIM, BATCH_SIZE))
+    model_sample = model.decode(z)
+    model = zero_grad(model)
     return model_sample
 
 def encode_decode(model, data_sample):
     z_mean, z_logvar = model.encode(data_sample)
-    z = z_mean + Tensor(np.array(E)) ** (z_logvar * Tensor(np.array(0.5))) * Tensor(np.random.randn(LATENT_DIM, BATCH_SIZE))  # Reparam trick
+    z = z_mean + E**(z_logvar * 0.5) * Tensor(np.random.randn(LATENT_DIM, BATCH_SIZE))  # Reparam trick
     recon = model.decode(z)
     return z_mean, z_logvar, recon
 
@@ -92,22 +93,27 @@ class AutoEncoder:
         return x
 
 def mse_loss(pred, gt):
-    loss = (pred - gt) ** Tensor(np.array(2.))
-    loss = loss.sum() / Tensor(np.array(gt.shape[1]))
+    loss = ((pred - gt)**2).mean()
     return loss
 
 def kl_loss(z_mean, z_logvar):
-    loss = Tensor(np.array(-0.5)) * (Tensor(np.array(1)) - z_mean ** Tensor(np.array(2)) - Tensor(np.array(E)) ** z_logvar).sum()
-    loss = loss / Tensor(np.array(z_mean.shape[1]))
+    loss = (-z_mean**2 - E**z_logvar + 1).mean() * (-0.5)
     return loss
 
-def update_params_and_zero_grad(model, lr):
+def update_params(model, lr):
     for param in model.encoder_params.values():
         param.data = param.data - lr*param.grad
-        param.grad = np.zeros_like(param.grad)
     for param in model.decoder_params.values():
         param.data = param.data - lr*param.grad
+    return model
+
+def zero_grad(model):
+    for param in model.encoder_params.values():
         param.grad = np.zeros_like(param.grad)
+        param.prev = None
+    for param in model.decoder_params.values():
+        param.grad = np.zeros_like(param.grad)
+        param.prev = None
     return model
 
 
@@ -137,9 +143,10 @@ def main():
         latents_mean, latents_logvar, recon = encode_decode(model, data_sample)
         loss_input_recon = mse_loss(recon, data_sample)
         loss_latent_prior = kl_loss(latents_mean, latents_logvar)
-        loss = loss_input_recon + Tensor(np.array(BETA)) * loss_latent_prior
+        loss = loss_input_recon + loss_latent_prior * BETA
         loss.backward()
-        model = update_params_and_zero_grad(model, lr=0.001)
+        model = update_params(model, lr=LR)
+        model = zero_grad(model)
 
         # Sample and viz
         losses_input_recon.append(loss_input_recon.data.squeeze()); losses_latent_prior.append(loss_latent_prior.data.squeeze())
@@ -149,6 +156,7 @@ def main():
             model_sample_plot.set_xdata(model_sample.data[0, :]); model_sample_plot.set_ydata(model_sample.data[1, :])
             fig.canvas.draw(); fig.canvas.flush_events()
 
+    # Plot loss curves
     plt.ioff()
     fig, ax = plt.subplots()
     ax.plot(losses_input_recon, label='Recon'); ax.plot(losses_latent_prior, label='Prior')
