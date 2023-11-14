@@ -9,11 +9,25 @@ from tqdm import tqdm
 
 sys.path.append("../nabla_python")
 from nabla import Tensor
+from utils import AdamOptimizer
 
 
 # ---
 # Utils
 
+class MLP:
+    def __init__(self):
+        self.params = {
+        'w1': Tensor(np.random.normal(size=(64, 1)), requires_grad=True),
+        'b1': Tensor(np.random.normal(size=(64, 1)), requires_grad=True),
+        'w2': Tensor(np.random.normal(size=(1, 64)), requires_grad=True),
+        'b2': Tensor(np.random.normal(size=(1, 1)), requires_grad=True),
+        }
+    def __call__(self, x):
+        a1 = (self.params['w1'].dot(x) + self.params['b1']).relu()
+        y = (self.params['w2'].dot(a1) + self.params['b2']).tanh()
+        return y
+        
 def sample_data():
     
     # Train samples
@@ -29,24 +43,6 @@ def sample_data():
     xtrain, ytrain, xtest, ytest = Tensor(xtrain), Tensor(ytrain), Tensor(xtest), Tensor(ytest)
 
     return xtrain, ytrain, xtest, ytest
-
-class MLP:
-    def __init__(self):
-        self.params = {
-        'w1': Tensor(np.random.normal(size=(16, 1)), requires_grad=True),
-        'b1': Tensor(np.random.normal(size=(16, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(1, 16)), requires_grad=True),
-        'b2': Tensor(np.random.normal(size=(1, 1)), requires_grad=True),
-        }
-    def __call__(self, x):
-        a1 = (self.params['w1'].dot(x) + self.params['b1']).sigmoid()
-        y = (self.params['w2'].dot(a1) + self.params['b2']).tanh()
-        return y
-
-def update_params(model, lr):
-    for param in model.params.values():
-        param.data = param.data - lr*param.grad
-    return model
 
 def zero_grad(model):
     for param in model.params.values():
@@ -64,14 +60,16 @@ def mse_loss(pred, gt):
 
 def main():
     
-    # Init model
+    # Init model and opt
     model = MLP()
+    opt = AdamOptimizer(model, lr=1e-2)
 
     # Init viz
     fig, ax = plt.subplots()
     xtrain, ytrain, xtest, ytest = sample_data()    
     ytestpred = model(xtest)
     testgt_plot = plt.plot(xtest.data[0,:], ytest.data[0,:], c='tab:blue')[0]
+    # testgt_plot = plt.plot(xtrain.data[0,:], ytrain.data[0,:], c='tab:blue', marker='.', ls='')[0]
     testpred_plot = plt.plot(xtest.data[0,:], ytestpred.data[0,:], c='tab:orange')[0]
     plt.ion(); plt.show()    
 
@@ -83,15 +81,14 @@ def main():
         ypred = model(xtrain)
         loss = mse_loss(ypred, ytrain)
         loss.backward()
-        model = update_params(model, lr=1e-1)
-        model = zero_grad(model)
+        model = opt.step(model)
 
         # Test and viz
         ytestpred = model(xtest)
         model = zero_grad(model)
         testpred_plot.set_ydata(ytestpred.data[0,:])
         fig.canvas.draw()
-        fig.canvas.flush_events()    
+        fig.canvas.flush_events()
 
 
 # ---

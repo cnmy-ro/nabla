@@ -78,14 +78,14 @@ class Operator(ABC):
 class Neg(Operator):
     def fx(self, x):     return -x.data
     def vjp(self, y, x):
-        grad_x = -y.grad
+        grad_x = y.grad * (-1.)
         grad_x = sum_grads_across_batch(x, grad_x)
         return [grad_x]
 
 class Sum(Operator):
     def fx(self, x):     return x.data.sum(keepdims=True)
     def vjp(self, y, x):
-        grad_x = y.grad
+        grad_x = y.grad * 1.
         grad_x = sum_grads_across_batch(x, grad_x)
         return [grad_x]
 
@@ -99,7 +99,7 @@ class Log(Operator):
 class ReLU(Operator):
     def fx(self, x):     return np.maximum(x.data, np.zeros_like(x.data))
     def vjp(self, y, x): 
-        grad_x = y.grad * (y.data > 0.).astype(float)
+        grad_x = y.grad * (x.data > 0.).astype(float)
         grad_x = sum_grads_across_batch(x, grad_x)
         return [grad_x]
 
@@ -124,14 +124,14 @@ class Tanh(Operator):
 class Add(Operator):
     def fx(self, x1, x2): return x1.data + x2.data
     def vjp(self, y, x1, x2):
-        grad_x1, grad_x2 = y.grad, y.grad
+        grad_x1, grad_x2 = y.grad * 1., y.grad * 1.
         grad_x1, grad_x2 = sum_grads_across_batch(x1, grad_x1), sum_grads_across_batch(x2, grad_x2)
         return [grad_x1, grad_x2]
 
 class Sub(Operator):
     def fx(self, x1, x2): return x1.data - x2.data
     def vjp(self, y, x1, x2):
-        grad_x1, grad_x2 = y.grad, -y.grad
+        grad_x1, grad_x2 = y.grad * 1., y.grad * (-1.)
         grad_x1, grad_x2 = sum_grads_across_batch(x1, grad_x1), sum_grads_across_batch(x2, grad_x2)
         return [grad_x1, grad_x2]
 

@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 sys.path.append("../nabla_python")
 from nabla import Tensor
+from utils import AdamOptimizer
 
 
 # ---
@@ -20,15 +21,47 @@ E = 2.718
 # ---
 # Config
 LATENT_DIM = 2
-HIDDEN_DIM = 8
-BATCH_SIZE = 512
-DIS_ITERS = 5
+HIDDEN_DIM = 128
+BATCH_SIZE = 256
+DIS_ITERS = 10
 ITERS = 1000
-LR_G, LR_D = 1e-2, 1e-2
+LR_G, LR_D = 1e-4, 1e-4
 
 
 # ---
 # Utils
+
+class Generator:
+    def __init__(self):
+        self.params = {
+        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, LATENT_DIM)), requires_grad=True),
+        'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True),
+        'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w3': Tensor(np.random.normal(size=(2, HIDDEN_DIM)), requires_grad=True),
+        'b3': Tensor(np.random.normal(size=(2, 1)), requires_grad=True),
+        }
+    def __call__(self, z):
+        a1 = (self.params['w1'].dot(z) + self.params['b1']).sigmoid()
+        a2 = (self.params['w2'].dot(a1) + self.params['b2']).sigmoid()
+        y = self.params['w3'].dot(a2) + self.params['b3'].tanh()
+        return y
+
+class Discriminator:
+    def __init__(self):
+        self.params = {
+        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, 2)), requires_grad=True),
+        'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True),
+        'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w3': Tensor(np.random.normal(size=(1, HIDDEN_DIM)), requires_grad=True),
+        'b3': Tensor(np.random.normal(size=(1, 1)), requires_grad=True),
+        }
+    def __call__(self, x):
+        a1 = (self.params['w1'].dot(x) + self.params['b1']).sigmoid()
+        a2 = (self.params['w2'].dot(a1) + self.params['b2']).sigmoid()
+        y = (self.params['w3'].dot(a2) + self.params['b3']).sigmoid()
+        return y
 
 def sample_data():
     """
@@ -48,38 +81,6 @@ def sample_model(gen):
     gen = zero_grad(gen)
     return model_sample
 
-class Generator:
-    def __init__(self):
-        self.params = {
-        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, LATENT_DIM)), requires_grad=True),
-        'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True),
-        'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w3': Tensor(np.random.normal(size=(2, HIDDEN_DIM)), requires_grad=True),
-        'b3': Tensor(np.random.normal(size=(2, 1)), requires_grad=True),
-        }
-    def __call__(self, x):
-        a1 = (self.params['w1'].dot(x) + self.params['b1']).sigmoid()
-        a2 = (self.params['w2'].dot(a1) + self.params['b2']).sigmoid()
-        y = self.params['w3'].dot(a2) + self.params['b3']
-        return y
-
-class Discriminator:
-    def __init__(self):
-        self.params = {
-        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, 2)), requires_grad=True),
-        'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True),
-        'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w3': Tensor(np.random.normal(size=(1, HIDDEN_DIM)), requires_grad=True),
-        'b3': Tensor(np.random.normal(size=(1, 1)), requires_grad=True),
-        }
-    def __call__(self, x):
-        a1 = (self.params['w1'].dot(x) + self.params['b1']).sigmoid()
-        a2 = (self.params['w2'].dot(a1) + self.params['b2']).sigmoid()
-        y = (self.params['w3'].dot(a2) + self.params['b3']).sigmoid()
-        return y
-
 def add_noise(x, iter_counter):
     noise_level = 0.05
     return x + Tensor(np.random.randn(*x.shape)) * (1. - iter_counter/ITERS) * noise_level
@@ -88,12 +89,6 @@ def nsgan_loss(pred, is_real):
     if is_real: loss = -( pred.log().mean() )
     else:       loss = -( (Tensor(np.array(1.)) - pred).log().mean() )
     return loss
-
-def update_params(model, lr):
-    for param in model.params.values():
-        param.data = param.data - lr*param.grad
-        param.grad = np.zeros_like(param.grad)
-    return model
 
 def zero_grad(model):
     for param in model.params.values():
@@ -116,9 +111,11 @@ def compute_disriminator_landscape(dis):
 
 def main():
 
-    # Init model
+    # Init model and opts
     gen = Generator()
     dis = Discriminator()
+    opt_g = AdamOptimizer(gen, lr=LR_G)
+    opt_d = AdamOptimizer(dis, lr=LR_D)
 
     # Init viz
     losses_g, losses_d = [], []
@@ -139,18 +136,16 @@ def main():
         for _ in range(DIS_ITERS):
             data_sample = add_noise(sample_data(), it)
             model_sample = add_noise(sample_model(gen), it)
-            model_sample.requires_grad = False
+            model_sample.prev = None  # Detach
             loss_d = nsgan_loss(dis(data_sample), is_real=True) + nsgan_loss(dis(model_sample), is_real=False)
             loss_d.backward()
-            dis = update_params(dis, lr=LR_D)
-            dis = zero_grad(dis)
+            dis = opt_d.step(dis)
 
         # Update G
         model_sample = sample_model(gen)
         loss_g = nsgan_loss(dis(model_sample), is_real=True)
         loss_g.backward()
-        gen = update_params(gen, lr=LR_G)
-        gen = zero_grad(gen)
+        gen = opt_g.step(gen)
         dis = zero_grad(dis)
 
         # Sample and viz
