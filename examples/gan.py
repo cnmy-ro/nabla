@@ -34,33 +34,31 @@ LR_G, LR_D = 1e-4, 1e-4
 class Generator:
     def __init__(self):
         self.params = {
-        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, LATENT_DIM)), requires_grad=True),
-        'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True),
-        'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w3': Tensor(np.random.normal(size=(2, HIDDEN_DIM)), requires_grad=True),
-        'b3': Tensor(np.random.normal(size=(2, 1)), requires_grad=True),
+        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, LATENT_DIM)), requires_grad=True), 'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True), 'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w3': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True), 'b3': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w4': Tensor(np.random.normal(size=(2, HIDDEN_DIM)), requires_grad=True),          'b4': Tensor(np.random.normal(size=(2, 1)), requires_grad=True),
         }
     def __call__(self, z):
         a1 = (self.params['w1'].dot(z) + self.params['b1']).sigmoid()
         a2 = (self.params['w2'].dot(a1) + self.params['b2']).sigmoid()
-        y = self.params['w3'].dot(a2) + self.params['b3'].tanh()
+        a3 = (self.params['w3'].dot(a2) + self.params['b3']).sigmoid()
+        y = self.params['w4'].dot(a3) + self.params['b4']
         return y
 
 class Discriminator:
     def __init__(self):
         self.params = {
-        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, 2)), requires_grad=True),
-        'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True),
-        'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w3': Tensor(np.random.normal(size=(1, HIDDEN_DIM)), requires_grad=True),
-        'b3': Tensor(np.random.normal(size=(1, 1)), requires_grad=True),
+        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, 2)), requires_grad=True),          'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True), 'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w3': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True), 'b3': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w4': Tensor(np.random.normal(size=(1, HIDDEN_DIM)), requires_grad=True),          'b4': Tensor(np.random.normal(size=(1, 1)), requires_grad=True),
         }
     def __call__(self, x):
         a1 = (self.params['w1'].dot(x) + self.params['b1']).sigmoid()
         a2 = (self.params['w2'].dot(a1) + self.params['b2']).sigmoid()
-        y = (self.params['w3'].dot(a2) + self.params['b3']).sigmoid()
+        a3 = (self.params['w3'].dot(a2) + self.params['b3']).sigmoid()
+        y = (self.params['w4'].dot(a3) + self.params['b4']).sigmoid()
         return y
 
 def sample_data():
@@ -82,7 +80,7 @@ def sample_model(gen):
     return model_sample
 
 def add_noise(x, iter_counter):
-    noise_level = 0.05
+    noise_level = 0.01
     return x + Tensor(np.random.randn(*x.shape)) * (1. - iter_counter/ITERS) * noise_level
 
 def nsgan_loss(pred, is_real):
@@ -151,6 +149,7 @@ def main():
         # Sample and viz
         losses_g.append(loss_g.data.squeeze()); losses_d.append(loss_d.data.squeeze())
         if it % 10 == 0:
+            data_sample = sample_data()
             xx, yy, pred_landscape = compute_disriminator_landscape(dis)
             ax.contourf(xx, yy, pred_landscape)
             data_sample_plot.set_xdata(data_sample.data[0, :]); data_sample_plot.set_ydata(data_sample.data[1, :])
@@ -166,6 +165,5 @@ def main():
 
 # ---
 # Run
-
 if __name__ == '__main__':
     main()

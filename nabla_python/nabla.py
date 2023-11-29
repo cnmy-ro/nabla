@@ -1,4 +1,3 @@
-from typing import Union, List
 from abc import ABC, abstractmethod
 import numpy as np
 
@@ -11,7 +10,7 @@ class Tensor:
         self.data = data
         self.requires_grad = requires_grad
         self.grad = np.zeros_like(data)  # d_root / d_self
-        self.prev = None
+        self.prev = None  # List [op, op_args]. Records the op and tensor(s) that created the self tensor.
         self.shape = data.shape
     
     def backward(self, grad: np.ndarray = np.array([[1.]])):
@@ -24,6 +23,8 @@ class Tensor:
                     op_arg_grad = op_args_vjp[i]
                     op_args[i].backward(op_arg_grad)
 
+    def __str__(self):            return self.data.__str__()
+    def __repr__(self):           return self.data.__repr__()
     def __neg__(self):            return Neg()(self)
     def __add__(self, other):     return Add()(self, other)
     def __sub__(self, other):     return Sub()(self, other)
@@ -35,8 +36,9 @@ class Tensor:
     def mean(self):               return Sum()(self) / Tensor(np.prod(np.array(self.shape)))
     def log(self):                return Log()(self)
     def relu(self):               return ReLU()(self)
+    def leaky_relu(self, alpha):  return LeakyReLU(alpha)(self)
     def sigmoid(self):            return Sigmoid()(self)
-    def tanh(self):               return Tanh()(self)
+    def tanh(self):               return Tanh()(self)    
 
 class Operator(ABC):
     
@@ -59,7 +61,7 @@ class Operator(ABC):
         ...
 
     @abstractmethod
-    def vjp(self, y: Tensor, *args: Tensor) -> List[np.ndarray]:
+    def vjp(self, y: Tensor, *args: Tensor) -> list[np.ndarray]:
         """
         Vector-Jacobian product.
         Implicitly computes J-dot-grad without having to materialize the massive J.
@@ -90,9 +92,9 @@ class Sum(Operator):
         return [grad_x]
 
 class Log(Operator):
-    def fx(self, x):     return np.log(x.data)
+    def fx(self, x):     return np.log(x.data + 1e-8)
     def vjp(self, y, x):
-        grad_x = y.grad * (1. / x.data)
+        grad_x = y.grad * (1. / (x.data + 1e-8))
         grad_x = sum_grads_across_batch(x, grad_x)
         return [grad_x]
 
@@ -100,6 +102,18 @@ class ReLU(Operator):
     def fx(self, x):     return np.maximum(x.data, np.zeros_like(x.data))
     def vjp(self, y, x): 
         grad_x = y.grad * (x.data > 0.).astype(float)
+        grad_x = sum_grads_across_batch(x, grad_x)
+        return [grad_x]
+
+class LeakyReLU(Operator):
+    def __init__(self, alpha):  self.alpha = alpha
+    def fx(self, x):
+        y = x.data.copy()
+        y[x.data < 0.] *= self.alpha
+        return y
+    def vjp(self, y, x):
+        grad_x = y.grad
+        grad_x[x.data < 0.] *= self.alpha
         grad_x = sum_grads_across_batch(x, grad_x)
         return [grad_x]
 
@@ -152,8 +166,13 @@ class Div(Operator):
 class Pow(Operator):
     def fx(self, x1, x2): return x1.data**x2.data
     def vjp(self, y, x1, x2):
-        grad_x1, grad_x2 = y.grad * x2.data * x1.data**(x2.data - 1.), y.grad * np.log(x1.data) * x1.data**x2.data
-        grad_x1, grad_x2 = sum_grads_across_batch(x1, grad_x1), sum_grads_across_batch(x2, grad_x2)
+        grad_x1 = y.grad * x2.data * x1.data**(x2.data - 1.)
+        grad_x1 = sum_grads_across_batch(x1, grad_x1)
+        if x2.requires_grad:
+            grad_x2 = y.grad * np.log(x1.data + 1e-8) * x1.data**x2.data
+            grad_x2 = sum_grads_across_batch(x2, grad_x2)
+        else:
+            grad_x2 = np.zeros_like(x2.data)
         return [grad_x1, grad_x2]
 
 class Dot(Operator):

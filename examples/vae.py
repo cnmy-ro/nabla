@@ -21,11 +21,11 @@ E = Tensor(np.array(2.718))
 # ---
 # Config
 LATENT_DIM = 2
-HIDDEN_DIM = 128
-BATCH_SIZE = 512
+HIDDEN_DIM = 256
+BATCH_SIZE = 64
 ITERS = 1000
 LR = 1e-3
-BETA = 1e2
+BETA = 5e2
 
 
 # ---
@@ -34,16 +34,11 @@ BETA = 1e2
 class Encoder:
     def __init__(self):
         self.params = {
-        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, 2)), requires_grad=True),
-        'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True),
-        'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w3': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True),
-        'b3': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w4_mean': Tensor(np.random.normal(size=(LATENT_DIM, HIDDEN_DIM)), requires_grad=True),
-        'b4_mean': Tensor(np.random.normal(size=(LATENT_DIM, 1)), requires_grad=True),
-        'w4_logvar': Tensor(np.random.normal(size=(LATENT_DIM, HIDDEN_DIM)), requires_grad=True),
-        'b4_logvar': Tensor(np.random.normal(size=(LATENT_DIM, 1)), requires_grad=True)
+        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, 2)), requires_grad=True),                 'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True),        'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w3': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True),        'b3': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w4_mean': Tensor(np.random.normal(size=(LATENT_DIM, HIDDEN_DIM)), requires_grad=True),   'b4_mean': Tensor(np.random.normal(size=(LATENT_DIM, 1)), requires_grad=True),
+        'w4_logvar': Tensor(np.random.normal(size=(LATENT_DIM, HIDDEN_DIM)), requires_grad=True), 'b4_logvar': Tensor(np.random.normal(size=(LATENT_DIM, 1)), requires_grad=True)
         }
     def __call__(self, x):
         a1 = (self.params['w1'].dot(x) + self.params['b1']).sigmoid()
@@ -56,20 +51,16 @@ class Encoder:
 class Decoder:
     def __init__(self):
         self.params = {
-        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, LATENT_DIM)), requires_grad=True),
-        'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True),
-        'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w3': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True),
-        'b3': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w4': Tensor(np.random.normal(size=(2, HIDDEN_DIM)), requires_grad=True),
-        'b4': Tensor(np.random.normal(size=(2, 1)), requires_grad=True)
+        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, LATENT_DIM)), requires_grad=True), 'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True), 'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w3': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True), 'b3': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
+        'w4': Tensor(np.random.normal(size=(2, HIDDEN_DIM)), requires_grad=True),          'b4': Tensor(np.random.normal(size=(2, 1)), requires_grad=True)
         }
     def __call__(self, z):
         a1 = (self.params['w1'].dot(z) + self.params['b1']).sigmoid()
         a2 = (self.params['w2'].dot(a1) + self.params['b2']).sigmoid()
-        a3 = (self.params['w3'].dot(a1) + self.params['b3']).sigmoid()
-        x = self.params['w4'].dot(a2) + self.params['b4']
+        a3 = (self.params['w3'].dot(a2) + self.params['b3']).sigmoid()
+        x = self.params['w4'].dot(a3) + self.params['b4']
         return x
         
 def sample_data():
@@ -162,6 +153,5 @@ def main():
 
 # ---
 # Run
-
 if __name__ == '__main__':
     main()

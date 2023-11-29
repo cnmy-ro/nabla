@@ -13,30 +13,34 @@ from utils import AdamOptimizer
 
 
 # ---
+# Config
+BATCH_SIZE = 512
+ITERS = 250
+
+
+# ---
 # Utils
 
 class MLP:
     def __init__(self):
         self.params = {
-        'w1': Tensor(np.random.normal(size=(64, 1)), requires_grad=True),
-        'b1': Tensor(np.random.normal(size=(64, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(1, 64)), requires_grad=True),
-        'b2': Tensor(np.random.normal(size=(1, 1)), requires_grad=True),
+        'w1': Tensor(np.random.normal(size=(64, 1)), requires_grad=True), 'b1': Tensor(np.random.normal(size=(64, 1)), requires_grad=True),
+        'w2': Tensor(np.random.normal(size=(1, 64)), requires_grad=True), 'b2': Tensor(np.random.normal(size=(1, 1)), requires_grad=True),
         }
     def __call__(self, x):
-        a1 = (self.params['w1'].dot(x) + self.params['b1']).relu()
-        y = (self.params['w2'].dot(a1) + self.params['b2']).tanh()
+        a1 = (self.params['w1'].dot(x) + self.params['b1']).sigmoid()
+        y = self.params['w2'].dot(a1) + self.params['b2']
         return y
         
 def sample_data():
     
     # Train samples
-    xtrain = (np.random.rand(1, 1024) - 0.5) * 2 * np.pi
-    noise = np.random.normal(0, 0.01, size=(1, 1024))
+    xtrain = (np.random.rand(1, BATCH_SIZE) - 0.5) * 2 * np.pi
+    noise = np.random.normal(0, 0.1, size=(1, BATCH_SIZE))
     ytrain = np.sin(xtrain) + noise
 
     # Test samples
-    xtest = np.expand_dims(np.linspace(-np.pi, np.pi, 1024), axis=0)
+    xtest = np.expand_dims(np.linspace(-np.pi, np.pi, BATCH_SIZE), axis=0)
     ytest = np.sin(xtest)
 
     # To Tensor, shape (len, batch)
@@ -65,16 +69,16 @@ def main():
     opt = AdamOptimizer(model, lr=1e-2)
 
     # Init viz
-    fig, ax = plt.subplots()
+    fig = plt.figure()
     xtrain, ytrain, xtest, ytest = sample_data()    
     ytestpred = model(xtest)
-    testgt_plot = plt.plot(xtest.data[0,:], ytest.data[0,:], c='tab:blue')[0]
-    # testgt_plot = plt.plot(xtrain.data[0,:], ytrain.data[0,:], c='tab:blue', marker='.', ls='')[0]
+    testgt_plot = plt.plot(xtrain.data[0,:], ytrain.data[0,:], c='tab:blue', marker='.', ls='', alpha=0.5)[0]
     testpred_plot = plt.plot(xtest.data[0,:], ytestpred.data[0,:], c='tab:orange')[0]
+    plt.ylim(-1.2, 1.2)
     plt.ion(); plt.show()    
 
     # Training loop
-    for epoch in tqdm(range(1000)):
+    for epoch in tqdm(range(ITERS)):
 
         # Update model
         xtrain, ytrain, xtest, ytest = sample_data()
@@ -93,6 +97,5 @@ def main():
 
 # ---
 # Run
-
 if __name__ == '__main__':
     main()
