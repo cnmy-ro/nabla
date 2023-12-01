@@ -10,12 +10,12 @@ class Tensor:
         self.data = data
         self.requires_grad = requires_grad
         self.grad = np.zeros_like(data)  # d_root / d_self
-        self.prev = None  # List [op, op_args]. Records the op and tensor(s) that created the self tensor.
+        self.prev = None  # List [op, op_args]. Records the previous node(s) in the computational graph.
         self.shape = data.shape
     
-    def backward(self, grad: np.ndarray = np.array([[1.]])):
+    def backward(self, grad: np.ndarray = np.array([[1.]])): # Backprop function
         self.grad += grad
-        if self.prev is not None:  # Depth-first tree traversal
+        if self.prev is not None:  # Recursive depth-first tree traversal
             op, op_args = self.prev[0], self.prev[1]
             op_args_vjp = op.vjp(self, *op_args)
             for i in range(len(op_args)):
@@ -92,7 +92,7 @@ class Sum(Operator):
         return [grad_x]
 
 class Log(Operator):
-    def fx(self, x):     return np.log(x.data + 1e-8)
+    def fx(self, x):     return np.log(x.data)
     def vjp(self, y, x):
         grad_x = y.grad * (1. / (x.data + 1e-8))
         grad_x = sum_grads_across_batch(x, grad_x)
@@ -169,7 +169,7 @@ class Pow(Operator):
         grad_x1 = y.grad * x2.data * x1.data**(x2.data - 1.)
         grad_x1 = sum_grads_across_batch(x1, grad_x1)
         if x2.requires_grad:
-            grad_x2 = y.grad * np.log(x1.data + 1e-8) * x1.data**x2.data
+            grad_x2 = y.grad * np.log(x1.data) * x1.data**x2.data
             grad_x2 = sum_grads_across_batch(x2, grad_x2)
         else:
             grad_x2 = np.zeros_like(x2.data)

@@ -86,10 +86,10 @@ def main():
         loss = mse_loss(ypred, ytrain)
         loss.backward()
         model = opt.step(model)
-
-        # Test and viz
-        ytestpred = model(xtest)
         model = zero_grad(model)
+        
+        # Test and viz
+        ytestpred = model(xtest)        
         testpred_plot.set_ydata(ytestpred.data[0,:])
         fig.canvas.draw()
         fig.canvas.flush_events()
