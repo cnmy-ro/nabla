@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 import numpy as np
 
+_enable_grad = True  # Global switch
+
 # ---
 # Core classes
 
@@ -10,13 +12,14 @@ class Tensor:
         self.data = data
         self.requires_grad = requires_grad
         self.grad = np.zeros_like(data)  # d_root / d_self
-        self.prev = None  # List [op, op_args]. Records the previous node(s) in the computational graph.
+        self.parents = None  # List [op, op_args]. Records the parent node(s) in the computational graph.
         self.shape = data.shape
     
     def backward(self, grad: np.ndarray = np.array([[1.]])): # Backprop function
+        if not _enable_grad: raise RuntimeError("Called backward() but gradient computation is disabled.")
         self.grad += grad
-        if self.prev is not None:  # Recursive depth-first tree traversal
-            op, op_args = self.prev[0], self.prev[1]
+        if self.parents is not None:  # Recursive depth-first tree traversal
+            op, op_args = self.parents[0], self.parents[1]
             op_args_vjp = op.vjp(self, *op_args)
             for i in range(len(op_args)):
                 if op_args[i].requires_grad:
@@ -44,7 +47,7 @@ class Operator(ABC):
     
     def __call__(self, *args: Tensor) -> Tensor:
         
-        # Auto type-casting float/int into Tensor. Limitation: The 1st argument must be a Tensor (e.g. "Tensor + float")
+        # Auto typecast float/int into Tensor. Limitation: During usage, the 1st argument must be a Tensor (e.g. "Tensor + float")
         args = list(args)
         for i in range(len(args)):
             if isinstance(args[i], float) or isinstance(args[i], int):
@@ -52,7 +55,8 @@ class Operator(ABC):
 
         y = self.fx(*args)
         y = Tensor(y, requires_grad=True)
-        y.prev = [self, args]
+        if _enable_grad:
+            y.parents = [self, args]
         return y
 
     @abstractmethod
@@ -64,7 +68,7 @@ class Operator(ABC):
     def vjp(self, y: Tensor, *args: Tensor) -> list[np.ndarray]:
         """
         Vector-Jacobian product.
-        Implicitly computes J-dot-grad without having to materialize the massive J.
+        Implicitly computes J.T-dot-grad without having to materialize the massive J.
         
         Args:
             y: result tensor of this op (i.e. of the fx function)
@@ -138,14 +142,14 @@ class Tanh(Operator):
 class Add(Operator):
     def fx(self, x1, x2): return x1.data + x2.data
     def vjp(self, y, x1, x2):
-        grad_x1, grad_x2 = y.grad * 1., y.grad * 1.
+        grad_x1, grad_x2 = y.grad, y.grad
         grad_x1, grad_x2 = sum_grads_across_batch(x1, grad_x1), sum_grads_across_batch(x2, grad_x2)
         return [grad_x1, grad_x2]
 
 class Sub(Operator):
     def fx(self, x1, x2): return x1.data - x2.data
     def vjp(self, y, x1, x2):
-        grad_x1, grad_x2 = y.grad * 1., y.grad * (-1.)
+        grad_x1, grad_x2 = y.grad, -y.grad
         grad_x1, grad_x2 = sum_grads_across_batch(x1, grad_x1), sum_grads_across_batch(x2, grad_x2)
         return [grad_x1, grad_x2]
 
@@ -190,3 +194,7 @@ def sum_grads_across_batch(arg, grad_arg):
         if arg.shape[1] == 1 and grad_arg.shape[1] > 1:
             grad_arg = grad_arg.sum(axis=1, keepdims=True)
     return grad_arg
+
+def enable_grad(flag):
+    global _enable_grad
+    _enable_grad = flag

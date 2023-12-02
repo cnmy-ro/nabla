@@ -9,6 +9,7 @@ from sklearn import datasets
 from tqdm import tqdm
 
 sys.path.append("../nabla_python")
+import nabla
 from nabla import Tensor
 from utils import AdamOptimizer
 
@@ -78,7 +79,6 @@ def sample_data():
 def sample_model(dec):
     z = Tensor(np.random.randn(LATENT_DIM, BATCH_SIZE))
     model_sample = dec(z)
-    dec = zero_grad(dec)
     return model_sample
 
 def encode_decode(enc, dec, data_sample):
@@ -98,7 +98,7 @@ def kl_loss(z_mean, z_logvar):
 def zero_grad(model):
     for param in model.params.values():
         param.grad = np.zeros_like(param.grad)
-        param.prev = None
+        param.parents = None
     return model
 
 
@@ -116,7 +116,9 @@ def main():
     # Init viz
     losses_input_recon, losses_latent_prior = [], []
     data_sample = sample_data()
+    nabla.enable_grad(False)
     model_sample = sample_model(dec)
+    nabla.enable_grad(True)
     fig, ax = plt.subplots()
     data_sample_plot = ax.plot(data_sample.data[0, :], data_sample.data[1, :], c='tab:blue', marker='.', ls='', label='Data')[0]
     model_sample_plot = ax.plot(model_sample.data[0, :], model_sample.data[1, :], c='tab:red', marker='.', ls='', label='Model')[0]
@@ -135,12 +137,16 @@ def main():
         loss.backward()
         enc = opt_e.step(enc)
         dec = opt_d.step(dec)
+        enc = zero_grad(enc)
+        dec = zero_grad(dec)
 
         # Sample and viz
         losses_input_recon.append(loss_input_recon.data.squeeze()); losses_latent_prior.append(loss_latent_prior.data.squeeze())
         if it % 10 == 0:
             data_sample_plot.set_xdata(data_sample.data[0, :]); data_sample_plot.set_ydata(data_sample.data[1, :])
+            nabla.enable_grad(False)
             model_sample = sample_model(dec)
+            nabla.enable_grad(True)
             model_sample_plot.set_xdata(model_sample.data[0, :]); model_sample_plot.set_ydata(model_sample.data[1, :])
             fig.canvas.draw(); fig.canvas.flush_events()
 

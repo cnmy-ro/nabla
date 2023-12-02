@@ -9,6 +9,7 @@ from sklearn import datasets
 from tqdm import tqdm
 
 sys.path.append("../nabla_python")
+import nabla
 from nabla import Tensor
 from utils import AdamOptimizer
 
@@ -73,10 +74,9 @@ def sample_data():
     data_sample = Tensor(data_sample)
     return data_sample
 
-def sample_model(gen):
+def sample_model(gen):    
     z = Tensor(np.random.randn(LATENT_DIM, BATCH_SIZE))
     model_sample = gen(z)
-    gen = zero_grad(gen)
     return model_sample
 
 def add_noise(x, iter_counter):
@@ -91,16 +91,17 @@ def nsgan_loss(pred, is_real):
 def zero_grad(model):
     for param in model.params.values():
         param.grad = np.zeros_like(param.grad)
-        param.prev = None
+        param.parents = None
     return model
 
 def compute_disriminator_landscape(dis):
+    nabla.enable_grad(False)
     xx, yy = np.meshgrid(np.arange(-1.2, 1.2, 0.01), np.arange(-1.2, 1.2, 0.01))
     xx_t = xx.flatten().T
     yy_t = yy.flatten().T
     pred_landscape = dis(Tensor(np.stack((xx_t, yy_t), axis=0)))
     pred_landscape = pred_landscape.data.reshape(xx.shape)
-    dis = zero_grad(dis)
+    nabla.enable_grad(True)
     return xx, yy, pred_landscape
 
 
@@ -118,7 +119,9 @@ def main():
     # Init viz
     losses_g, losses_d = [], []
     data_sample = sample_data()
+    nabla.enable_grad(False)
     model_sample = sample_model(gen)
+    nabla.enable_grad(True)
     xx, yy, pred_landscape = compute_disriminator_landscape(dis)
     fig, ax = plt.subplots()
     ax.contourf(xx, yy, pred_landscape)
@@ -134,16 +137,18 @@ def main():
         for _ in range(DIS_ITERS):
             data_sample = add_noise(sample_data(), it)
             model_sample = add_noise(sample_model(gen), it)
-            model_sample.prev = None  # Detach
+            model_sample.parents = None  # Detach
             loss_d = nsgan_loss(dis(data_sample), is_real=True) + nsgan_loss(dis(model_sample), is_real=False)
             loss_d.backward()
             dis = opt_d.step(dis)
+            dis = zero_grad(dis)
 
         # Update G
         model_sample = sample_model(gen)
         loss_g = nsgan_loss(dis(model_sample), is_real=True)
         loss_g.backward()
         gen = opt_g.step(gen)
+        gen = zero_grad(gen)
         dis = zero_grad(dis)
 
         # Sample and viz

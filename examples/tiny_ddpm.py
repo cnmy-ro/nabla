@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 sys.path.append("../nabla_python")
+import nabla
 from nabla import Tensor
 from utils import AdamOptimizer
 
@@ -115,6 +116,11 @@ def criterion(data_sample, t_batch, noise_model):
     loss = ((std_noise - noise_pred) ** 2).sum()
     return loss
 
+def zero_grad(model):
+    for param in model.params.values():
+        param.grad = np.zeros_like(param.grad)
+        param.parents = None
+    return model
 
 # ---
 # Main function
@@ -127,7 +133,9 @@ def main():
     # Visualization objects
     losses = []
     data_sample = sample_data()
+    nabla.enable_grad(False)
     model_sample = sample_model(noise_model)
+    nabla.enable_grad(True)
     fig, ax = plt.subplots()
     data_sample_plot = ax.scatter(data_sample.data[0, :], data_sample.data[1, :], c='tab:blue', marker='.', label='Data')
     model_sample_plot = ax.plot(model_sample.data[0, :], model_sample.data[1, :], c='tab:red', marker='.', ls='', label='Model')[0]
@@ -143,11 +151,14 @@ def main():
         loss = criterion(data_sample, t_batch, noise_model)
         loss.backward()
         noise_model = opt.step(noise_model)
+        noise_model = zero_grad(noise_model)
         
         # Sample and viz
         losses.append(loss.data.squeeze())
         if it % 1000 == 0:
+            nabla.enable_grad(False)
             model_sample = sample_model(noise_model)
+            nabla.enable_grad(True)
             model_sample_plot.set_xdata(model_sample.data[0, :])
             model_sample_plot.set_ydata(model_sample.data[1, :])
             fig.canvas.draw(); fig.canvas.flush_events() 

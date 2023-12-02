@@ -16,6 +16,5 @@ class AdamOptimizer:
             m_hat = self.m_dict[k] / (1 - self.beta_1**self.t)
             v_hat = self.v_dict[k] / (1 - self.beta_2**self.t)
             param.data = param.data - self.lr * m_hat / np.sqrt(v_hat + 1e-8)
-            param.grad = np.zeros_like(param.data)
             self.t += 1
         return model

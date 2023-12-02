@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 sys.path.append("../nabla_python")
+import nabla
 from nabla import Tensor
 from utils import AdamOptimizer
 
@@ -15,7 +16,7 @@ from utils import AdamOptimizer
 # ---
 # Config
 BATCH_SIZE = 512
-ITERS = 250
+ITERS = 500
 
 
 # ---
@@ -51,7 +52,7 @@ def sample_data():
 def zero_grad(model):
     for param in model.params.values():
         param.grad = np.zeros_like(param.data)
-        param.prev = None
+        param.parents = None
     return model
 
 def mse_loss(pred, gt):
@@ -70,8 +71,10 @@ def main():
 
     # Init viz
     fig = plt.figure()
-    xtrain, ytrain, xtest, ytest = sample_data()    
+    xtrain, ytrain, xtest, ytest = sample_data()
+    nabla.enable_grad(False)
     ytestpred = model(xtest)
+    nabla.enable_grad(True)
     testgt_plot = plt.plot(xtrain.data[0,:], ytrain.data[0,:], c='tab:blue', marker='.', ls='', alpha=0.5)[0]
     testpred_plot = plt.plot(xtest.data[0,:], ytestpred.data[0,:], c='tab:orange')[0]
     plt.ylim(-1.2, 1.2)
@@ -89,7 +92,9 @@ def main():
         model = zero_grad(model)
         
         # Test and viz
-        ytestpred = model(xtest)        
+        nabla.enable_grad(False)
+        ytestpred = model(xtest)
+        nabla.enable_grad(True)        
         testpred_plot.set_ydata(ytestpred.data[0,:])
         fig.canvas.draw()
         fig.canvas.flush_events()
