@@ -10,5 +10,5 @@ Minimal implementation of reverse-mode automatic differentiation.
 - Python version:
 	- `nabla_python/nabla.py`: Core autodiff module	based on Numpy
 	- `examples`: Toy examples built using this module
-- C/C++ version (WIP):
-	- `nabla_cpp/nabla.h`: Core autodiff library based on Eigen
+- C version (WIP):
+	- `nabla_c/nabla.h`: Core autodiff library written from scratch
