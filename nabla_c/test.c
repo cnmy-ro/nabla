@@ -1,43 +1,75 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include "arrays.h"
 #include "nabla.h"
 
 
+void test_arrays(){
+
+	Array x1, x2, y;
+	alloc_array(&x1, 3, 1);
+	alloc_array(&x2, 3, 1);
+	alloc_array(&y, 3, 1);
+	
+	fill_array_constant(&x1, 7);
+	fill_array_constant(&x2, 3);
+	
+	mul(&x1, &x2, &y);
+	print_array(&y);
+	printf("\n");
+
+	free_array(&x1);
+	free_array(&x2);
+	free_array(&y);
+}
+
+void test_nabla(){
+
+	// Tensor t1, t2;
+	// alloc_tensor(&t1, 3, 1, false);
+	// alloc_tensor(&t2, 3, 1, false);
+	// fill_tensor_constant(&t1, 2);
+	// fill_tensor_constant(&t2, 3);
+	// print_array(&(t1.data));
+	// printf("\n");
+	// print_array(&(t2.data));
+	// printf("\n");
+
+	// Tensor t3;
+	// add_fx(&t1, &t2, &t3);
+	// print_array(&(t3.data));
+
+	Tensor x1, x2, x3, y;
+	alloc_tensor(&x1, 3, 1, true);
+	fill_tensor_constant(&x1, 2);
+	alloc_tensor(&x2, 3, 1, true);
+	fill_tensor_constant(&x2, 3);
+	mul_fx(&x1, &x2, &x3);
+	sum_fx(&x3, &y);
+
+	print_array(&(x3.data));
+	printf("\n");
+	print_array(&(y.data));
+	printf("\n");
+	printf("\n");
+	
+	Array init_grad;
+	alloc_array(&init_grad, 1, 1);
+	fill_array_constant(&init_grad, 1);
+	backward(&y, &init_grad);
+	print_array(&(x3.grad));
+	printf("\n");
+	print_array(&(x1.grad));
+	printf("\n");
+	print_array(&(x2.grad));
+
+}
+
 void main() {	
 
 	// Test arrays lib
-	// Array mat, vec;
-	// init_array_full(&mat, 3, 4, 0);
-	// init_array_full(&vec, 4, 1, 1);	
-	// printf("%d %d\n", mat.shape[0], mat.shape[1]);
-	// printf("%d %d\n", vec.shape[0], vec.shape[1]);
-
-	// Array vec2, vec3;
-	// init_array_full(&vec2, 4, 1, 2);
-	// add(&vec, &vec2, &vec3);
-	// print_array(&vec3);
-
-	// float y;
-	// sum(&vec3, &y);
-	// printf("%f\n", y);
-
-	// dot(&vec2, &vec3, &y);
-	// printf("%f\n", y);
-
-	Array mat1, mat2, mat3;
-	init_array_full(&mat1, 3, 2, 1);
-	init_array_full(&mat2, 2, 4, 2);
-	matmul(&mat1, &mat2, &mat3);
-	print_array(&mat1);
-	printf("\n");
-	print_array(&mat2);
-	printf("\n");
-	print_array(&mat3);
-	printf("\n");
-
-	Array mat;
-	init_array_uniform_random(&mat, 3, 2);
-	print_array(&mat);
+	test_arrays();
 
 	// Test nabla
+	test_nabla();
 }
