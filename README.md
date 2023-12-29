@@ -5,11 +5,11 @@
 
 # Nabla
 
-Minimal implementation of reverse-mode automatic differentiation.
+Minimal implementation of reverse-mode automatic differentiation with PyTorch-like API.
 
 - Python version:
-	- `nabla_python/nabla.py`: Core autodiff module	based on Numpy
+	- `pynabla/nabla.py`: Core autodiff module	based on Numpy
 	- `examples`: Toy examples built using this module
 - C version:
-	- `nabla_c/arrays.h`: Custom array library
-	- `nabla_c/nabla.h`: Core autodiff library wrapping `arrays.h`
+	- `cnabla/arrays.h`: Custom array library
+	- `cnabla/nabla.h`: Core autodiff library wrapping `arrays.h`

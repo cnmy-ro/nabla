@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-sys.path.append("../nabla_python")
+sys.path.append("../pynabla")
 import nabla
 from nabla import Tensor
 from utils import AdamOptimizer
