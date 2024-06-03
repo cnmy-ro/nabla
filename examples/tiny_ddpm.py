@@ -20,8 +20,8 @@ from utils import AdamOptimizer
 HIDDEN_DIM = 256
 NUM_DIFFUSION_STEPS = 1000
 BETA_T = 1e-4
-BATCH_SIZE = 64
-NUM_ITERS = 10000
+BATCH_SIZE = 128
+NUM_ITERS = 5000
 
 
 # ---
@@ -86,17 +86,18 @@ def sample_model(noise_model):
 
 def show_reverse_diffusion(noise_model):
     
-    model_sample = Tensor(np.random.randn(2, BATCH_SIZE))
+    num_samples = BATCH_SIZE * 8
+    model_sample = Tensor(np.random.randn(2, num_samples))
 
     fig, ax = plt.subplots()
-    model_sample_plot = ax.plot(model_sample.data[0, :], model_sample.data[1, :], c='tab:red', marker='.', ls='')[0]
-    ax.set_xlim(-1.2, 1.2); ax.set_ylim(-1.2, 1.2); ax.set_title("Reverse diffusion process")        
+    model_sample_plot = ax.plot(model_sample.data[0, :], model_sample.data[1, :], c='tab:red', marker='.', ls='', alpha=0.5)[0]
+    ax.set_xlim(-1.2, 1.2); ax.set_ylim(-1.2, 1.2); ax.set_title("Diffusion Model (reverse diffusion process)")
     fig.tight_layout(); plt.ion(); plt.show()    
 
     for t in range(NUM_DIFFUSION_STEPS - 1, 0, -1):
         
         z = Tensor(np.random.randn(*model_sample.shape)) if t > 0 else Tensor(np.zeros(model_sample.shape))
-        t_batch = np.full((1, BATCH_SIZE), t)
+        t_batch = np.full((1, num_samples), t)
         sigma_t, alpha_t, alpha_bar_t = sigma_schedule[t_batch], alpha_schedule[t_batch], alpha_bar_schedule[t_batch]
         t_batch = Tensor(t_batch)
         noise_pred = noise_model(model_sample, t_batch)
@@ -106,6 +107,7 @@ def show_reverse_diffusion(noise_model):
         model_sample_plot.set_xdata(model_sample.data[0, :])
         model_sample_plot.set_ydata(model_sample.data[1, :])
         fig.canvas.draw(); fig.canvas.flush_events()
+        fig.savefig(f"./outputs/diffusion/{str(NUM_DIFFUSION_STEPS - 1 - t).zfill(5)}.png")
     
     plt.ioff()
 

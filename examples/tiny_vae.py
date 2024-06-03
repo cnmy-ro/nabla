@@ -23,10 +23,10 @@ E = Tensor(np.array(2.718))
 # Config
 LATENT_DIM = 2
 HIDDEN_DIM = 256
-BATCH_SIZE = 64
+BATCH_SIZE = 256
 ITERS = 1000
 LR = 1e-3
-BETA = 5e2
+BETA = 1e-2
 
 
 # ---

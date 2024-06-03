@@ -22,10 +22,10 @@ E = 2.718
 # ---
 # Config
 LATENT_DIM = 2
-HIDDEN_DIM = 128
+HIDDEN_DIM = 256
 BATCH_SIZE = 64
 DIS_ITERS = 10
-ITERS = 1000
+ITERS = 3000
 LR_G, LR_D = 1e-4, 1e-4
 
 
@@ -62,11 +62,11 @@ class Discriminator:
         y = (self.params['w4'].dot(a3) + self.params['b4']).sigmoid()
         return y
 
-def sample_data():
+def sample_data(num_samples=BATCH_SIZE):
     """
     Data generation process. Unknown to the model.
     """
-    X, _ = datasets.make_swiss_roll(n_samples=BATCH_SIZE, noise=0.1)
+    X, _ = datasets.make_swiss_roll(n_samples=num_samples, noise=0.1)
     data_sample = np.stack([X[:, 0], X[:, 2]], axis=1)
     data_sample = (data_sample - data_sample.min()) / (data_sample.max() - data_sample.min())
     data_sample = data_sample * 2. - 1.
@@ -74,8 +74,8 @@ def sample_data():
     data_sample = Tensor(data_sample)
     return data_sample
 
-def sample_model(gen):    
-    z = Tensor(np.random.randn(LATENT_DIM, BATCH_SIZE))
+def sample_model(gen, num_samples=BATCH_SIZE):    
+    z = Tensor(np.random.randn(LATENT_DIM, num_samples))
     model_sample = gen(z)
     return model_sample
 
@@ -125,8 +125,8 @@ def main():
     xx, yy, pred_landscape = compute_disriminator_landscape(dis)
     fig, ax = plt.subplots()
     ax.contourf(xx, yy, pred_landscape)
-    data_sample_plot = ax.plot(data_sample.data[0, :], data_sample.data[1, :], c='tab:blue', marker='.', ls='', label='Data')[0]
-    model_sample_plot = ax.plot(model_sample.data[0, :], model_sample.data[1, :], c='tab:red', marker='.', ls='', label='Model')[0]
+    data_sample_plot = ax.plot(data_sample.data[0, :], data_sample.data[1, :], c='purple', marker='.', ls='', label='Data')[0]
+    model_sample_plot = ax.plot(model_sample.data[0, :], model_sample.data[1, :], c='orangered', marker='.', ls='', label='Model')[0]
     ax.set_xlim(-1.2, 1.2); ax.set_ylim(-1.2, 1.2); ax.set_title("Samples")
     fig.legend(); fig.tight_layout(); plt.ion(); plt.show()
 
@@ -154,12 +154,15 @@ def main():
         # Sample and viz
         losses_g.append(loss_g.data.squeeze()); losses_d.append(loss_d.data.squeeze())
         if it % 10 == 0:
-            data_sample = sample_data()
+            num_samples = BATCH_SIZE * 4
+            data_sample = sample_data(num_samples)
+            model_sample = sample_model(gen, num_samples)
             xx, yy, pred_landscape = compute_disriminator_landscape(dis)
-            ax.contourf(xx, yy, pred_landscape)
+            ax.contourf(xx, yy, pred_landscape, cmap='cividis')
             data_sample_plot.set_xdata(data_sample.data[0, :]); data_sample_plot.set_ydata(data_sample.data[1, :])
             model_sample_plot.set_xdata(model_sample.data[0, :]); model_sample_plot.set_ydata(model_sample.data[1, :])
             fig.canvas.draw(); fig.canvas.flush_events()
+            fig.savefig(f"./outputs/gan/{str(it).zfill(5)}.png")
     
     # Plot loss curves
     plt.ioff()

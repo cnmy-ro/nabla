@@ -25,8 +25,8 @@ ITERS = 500
 class MLP:
     def __init__(self):
         self.params = {
-        'w1': Tensor(np.random.normal(size=(64, 1)), requires_grad=True), 'b1': Tensor(np.random.normal(size=(64, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(1, 64)), requires_grad=True), 'b2': Tensor(np.random.normal(size=(1, 1)), requires_grad=True),
+        'w1': Tensor(np.random.normal(size=(128, 1)), requires_grad=True), 'b1': Tensor(np.random.normal(size=(128, 1)), requires_grad=True),
+        'w2': Tensor(np.random.normal(size=(1, 128)), requires_grad=True), 'b2': Tensor(np.random.normal(size=(1, 1)), requires_grad=True),
         }
     def __call__(self, x):
         a1 = (self.params['w1'].dot(x) + self.params['b1']).sigmoid()
@@ -81,7 +81,7 @@ def main():
     plt.ion(); plt.show()    
 
     # Training loop
-    for epoch in tqdm(range(ITERS)):
+    for it in tqdm(range(ITERS)):
 
         # Update model
         xtrain, ytrain, xtest, ytest = sample_data()
@@ -98,6 +98,7 @@ def main():
         testpred_plot.set_ydata(ytestpred.data[0,:])
         fig.canvas.draw()
         fig.canvas.flush_events()
+        fig.savefig(f"./outputs/regression/{str(it).zfill(5)}.png")
 
 
 # ---
