@@ -98,7 +98,7 @@ def main():
         testpred_plot.set_ydata(ytestpred.data[0,:])
         fig.canvas.draw()
         fig.canvas.flush_events()
-        fig.savefig(f"./outputs/regression/{str(it).zfill(5)}.png")
+        # fig.savefig(f"./outputs/regression/{str(it).zfill(5)}.png")
 
 
 # ---
