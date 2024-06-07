@@ -23,5 +23,15 @@ def test_dot():
 	print(a.grad)
 	print(b.grad)
 
+def test_tensor_overwrite():
+	a = Tensor(np.ones((4,1))*3, requires_grad=True)
+	b = Tensor(np.ones((4,1)), requires_grad=True)
+	a = a * b
+	a = a.sum()
+	a.backward()
+	print(a.grad)
+	print(b.grad)
 
-test_dot()
+
+# test_dot()
+test_tensor_overwrite()

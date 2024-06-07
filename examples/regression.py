@@ -52,6 +52,7 @@ def sample_data():
 def zero_grad(model):
     for param in model.params.values():
         param.grad = np.zeros_like(param.data)
+        param.op = None
         param.parents = None
     return model
 
