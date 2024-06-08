@@ -11,7 +11,7 @@ from tqdm import tqdm
 sys.path.append("../pynabla")
 import nabla
 from nabla import Tensor
-from utils import AdamOptimizer
+from utils import AdamOptimizer, zero_grad
 
 
 # ---
@@ -35,11 +35,11 @@ BETA = 1e-2
 class Encoder:
     def __init__(self):
         self.params = {
-        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, 2)), requires_grad=True),                 'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True),        'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w3': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True),        'b3': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w4_mean': Tensor(np.random.normal(size=(LATENT_DIM, HIDDEN_DIM)), requires_grad=True),   'b4_mean': Tensor(np.random.normal(size=(LATENT_DIM, 1)), requires_grad=True),
-        'w4_logvar': Tensor(np.random.normal(size=(LATENT_DIM, HIDDEN_DIM)), requires_grad=True), 'b4_logvar': Tensor(np.random.normal(size=(LATENT_DIM, 1)), requires_grad=True)
+        'w1': nabla.randn((HIDDEN_DIM, 2), requires_grad=True),                 'b1': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w2': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True),        'b2': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w3': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True),        'b3': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w4_mean': nabla.randn((LATENT_DIM, HIDDEN_DIM), requires_grad=True),   'b4_mean': nabla.zeros((LATENT_DIM, 1), requires_grad=True),
+        'w4_logvar': nabla.randn((LATENT_DIM, HIDDEN_DIM), requires_grad=True), 'b4_logvar': nabla.zeros((LATENT_DIM, 1), requires_grad=True)
         }
     def __call__(self, x):
         a1 = (self.params['w1'].dot(x) + self.params['b1']).sigmoid()
@@ -52,10 +52,10 @@ class Encoder:
 class Decoder:
     def __init__(self):
         self.params = {
-        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, LATENT_DIM)), requires_grad=True), 'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True), 'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w3': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True), 'b3': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w4': Tensor(np.random.normal(size=(2, HIDDEN_DIM)), requires_grad=True),          'b4': Tensor(np.random.normal(size=(2, 1)), requires_grad=True)
+        'w1': nabla.randn((HIDDEN_DIM, LATENT_DIM), requires_grad=True), 'b1': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w2': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True), 'b2': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w3': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True), 'b3': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w4': nabla.randn((2, HIDDEN_DIM), requires_grad=True),          'b4': nabla.zeros((2, 1), requires_grad=True)
         }
     def __call__(self, z):
         a1 = (self.params['w1'].dot(z) + self.params['b1']).sigmoid()
@@ -77,13 +77,13 @@ def sample_data():
     return data_sample
 
 def sample_model(dec):
-    z = Tensor(np.random.randn(LATENT_DIM, BATCH_SIZE))
+    z = nabla.randn(LATENT_DIM, BATCH_SIZE)
     model_sample = dec(z)
     return model_sample
 
 def encode_decode(enc, dec, data_sample):
     z_mean, z_logvar = enc(data_sample)
-    z = z_mean + E**(z_logvar * 0.5) * Tensor(np.random.randn(LATENT_DIM, BATCH_SIZE))  # Reparam trick
+    z = z_mean + E**(z_logvar * 0.5) * nabla.randn(LATENT_DIM, BATCH_SIZE)  # Reparam trick
     recon = dec(z)
     return z_mean, z_logvar, recon
 
@@ -94,12 +94,6 @@ def mse_loss(pred, gt):
 def kl_loss(z_mean, z_logvar):
     loss = (-z_mean**2 - E**z_logvar + 1).mean() * (-0.5)
     return loss
-
-def zero_grad(model):
-    for param in model.params.values():
-        param.grad = np.zeros_like(param.grad)
-        param.parents = None
-    return model
 
 
 # ---

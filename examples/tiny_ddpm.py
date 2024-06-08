@@ -11,7 +11,7 @@ from tqdm import tqdm
 sys.path.append("../pynabla")
 import nabla
 from nabla import Tensor
-from utils import AdamOptimizer
+from utils import AdamOptimizer, zero_grad
 
 
 
@@ -41,10 +41,10 @@ for t in range(1, NUM_DIFFUSION_STEPS):
 class NoiseModel:
     def __init__(self):
         self.params = {
-        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, 3)), requires_grad=True), 'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True), 'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w3': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True), 'b3': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w4': Tensor(np.random.normal(size=(2, HIDDEN_DIM)), requires_grad=True),          'b4': Tensor(np.random.normal(size=(2, 1)), requires_grad=True),
+        'w1': nabla.randn((HIDDEN_DIM, 3), requires_grad=True), 'b1': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w2': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True), 'b2': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w3': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True), 'b3': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w4': nabla.randn((2, HIDDEN_DIM), requires_grad=True),          'b4': nabla.zeros((2, 1), requires_grad=True),
         }
     def __call__(self, x, t):
         t = t / NUM_DIFFUSION_STEPS
@@ -70,11 +70,11 @@ def sample_data():
 
 def sample_model(noise_model):
      
-    model_sample = Tensor(np.random.randn(2, BATCH_SIZE))
+    model_sample = nabla.randn(2, BATCH_SIZE)
 
     for t in range(NUM_DIFFUSION_STEPS - 1, 0, -1):
 
-        z = Tensor(np.random.randn(*model_sample.shape)) if t > 0 else Tensor(np.zeros(model_sample.shape))
+        z = nabla.randn(*model_sample.shape) if t > 0 else nabla.zeros(model_sample.shape)
         t_batch = np.full((1, BATCH_SIZE), t)
         sigma_t, alpha_t, alpha_bar_t = sigma_schedule[t_batch], alpha_schedule[t_batch], alpha_bar_schedule[t_batch]
         t_batch = Tensor(t_batch)
@@ -87,7 +87,7 @@ def sample_model(noise_model):
 def show_reverse_diffusion(noise_model):
     
     num_samples = BATCH_SIZE * 8
-    model_sample = Tensor(np.random.randn(2, num_samples))
+    model_sample = nabla.randn(2, num_samples)
 
     fig, ax = plt.subplots()
     model_sample_plot = ax.plot(model_sample.data[0, :], model_sample.data[1, :], c='tab:red', marker='.', ls='', alpha=0.5)[0]
@@ -96,7 +96,7 @@ def show_reverse_diffusion(noise_model):
 
     for t in range(NUM_DIFFUSION_STEPS - 1, 0, -1):
         
-        z = Tensor(np.random.randn(*model_sample.shape)) if t > 0 else Tensor(np.zeros(model_sample.shape))
+        z = nabla.randn(*model_sample.shape) if t > 0 else nabla.zeros(model_sample.shape)
         t_batch = np.full((1, num_samples), t)
         sigma_t, alpha_t, alpha_bar_t = sigma_schedule[t_batch], alpha_schedule[t_batch], alpha_bar_schedule[t_batch]
         t_batch = Tensor(t_batch)
@@ -113,16 +113,10 @@ def show_reverse_diffusion(noise_model):
 
 def criterion(data_sample, t_batch, noise_model):
     alpha_bar_t = alpha_bar_schedule[t_batch.data]
-    std_noise = Tensor(np.random.randn(*data_sample.shape))
+    std_noise = nabla.randn(*data_sample.shape)
     noise_pred = noise_model(data_sample * np.sqrt(alpha_bar_t) + std_noise * np.sqrt(1 - alpha_bar_t), t_batch)
     loss = ((std_noise - noise_pred) ** 2).sum()
     return loss
-
-def zero_grad(model):
-    for param in model.params.values():
-        param.grad = np.zeros_like(param.grad)
-        param.parents = None
-    return model
 
 # ---
 # Main function
@@ -149,7 +143,7 @@ def main():
     
         # Update noise model
         data_sample = sample_data()
-        t_batch = Tensor(np.random.randint(0, NUM_DIFFUSION_STEPS, (1, BATCH_SIZE)))
+        t_batch = nabla.randint(0, NUM_DIFFUSION_STEPS, (1, BATCH_SIZE))
         loss = criterion(data_sample, t_batch, noise_model)
         loss.backward()
         noise_model = opt.step(noise_model)

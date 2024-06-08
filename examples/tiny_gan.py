@@ -11,7 +11,7 @@ from tqdm import tqdm
 sys.path.append("../pynabla")
 import nabla
 from nabla import Tensor
-from utils import AdamOptimizer
+from utils import AdamOptimizer, zero_grad
 
 
 # ---
@@ -35,10 +35,10 @@ LR_G, LR_D = 1e-4, 1e-4
 class Generator:
     def __init__(self):
         self.params = {
-        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, LATENT_DIM)), requires_grad=True), 'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True), 'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w3': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True), 'b3': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w4': Tensor(np.random.normal(size=(2, HIDDEN_DIM)), requires_grad=True),          'b4': Tensor(np.random.normal(size=(2, 1)), requires_grad=True),
+        'w1': nabla.randn((HIDDEN_DIM, LATENT_DIM), requires_grad=True), 'b1': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w2': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True), 'b2': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w3': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True), 'b3': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w4': nabla.randn((2, HIDDEN_DIM), requires_grad=True),          'b4': nabla.zeros((2, 1), requires_grad=True),
         }
     def __call__(self, z):
         a1 = (self.params['w1'].dot(z) + self.params['b1']).sigmoid()
@@ -50,10 +50,10 @@ class Generator:
 class Discriminator:
     def __init__(self):
         self.params = {
-        'w1': Tensor(np.random.normal(size=(HIDDEN_DIM, 2)), requires_grad=True),          'b1': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True), 'b2': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w3': Tensor(np.random.normal(size=(HIDDEN_DIM, HIDDEN_DIM)), requires_grad=True), 'b3': Tensor(np.random.normal(size=(HIDDEN_DIM, 1)), requires_grad=True),
-        'w4': Tensor(np.random.normal(size=(1, HIDDEN_DIM)), requires_grad=True),          'b4': Tensor(np.random.normal(size=(1, 1)), requires_grad=True),
+        'w1': nabla.randn((HIDDEN_DIM, 2), requires_grad=True),          'b1': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w2': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True), 'b2': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w3': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True), 'b3': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
+        'w4': nabla.randn((1, HIDDEN_DIM), requires_grad=True),          'b4': nabla.zeros((1, 1), requires_grad=True),
         }
     def __call__(self, x):
         a1 = (self.params['w1'].dot(x) + self.params['b1']).sigmoid()
@@ -75,24 +75,18 @@ def sample_data(num_samples=BATCH_SIZE):
     return data_sample
 
 def sample_model(gen, num_samples=BATCH_SIZE):    
-    z = Tensor(np.random.randn(LATENT_DIM, num_samples))
+    z = nabla.randn(LATENT_DIM, num_samples)
     model_sample = gen(z)
     return model_sample
 
 def add_noise(x, iter_counter):
     noise_level = 0.01
-    return x + Tensor(np.random.randn(*x.shape)) * (1. - iter_counter/ITERS) * noise_level
+    return x + nabla.randn(*x.shape) * (1. - iter_counter/ITERS) * noise_level
 
 def nsgan_loss(pred, is_real):
     if is_real: loss = -( pred.log().mean() )
     else:       loss = -( (Tensor(np.array(1.)) - pred).log().mean() )
     return loss
-
-def zero_grad(model):
-    for param in model.params.values():
-        param.grad = np.zeros_like(param.grad)
-        param.parents = None
-    return model
 
 def compute_disriminator_landscape(dis):
     nabla.enable_grad(False)
@@ -137,7 +131,7 @@ def main():
         for _ in range(DIS_ITERS):
             data_sample = add_noise(sample_data(), it)
             model_sample = add_noise(sample_model(gen), it)
-            model_sample.parents = None  # Detach
+            model_sample.detach() # Detach
             loss_d = nsgan_loss(dis(data_sample), is_real=True) + nsgan_loss(dis(model_sample), is_real=False)
             loss_d.backward()
             dis = opt_d.step(dis)

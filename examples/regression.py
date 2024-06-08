@@ -10,7 +10,7 @@ from tqdm import tqdm
 sys.path.append("../pynabla")
 import nabla
 from nabla import Tensor
-from utils import AdamOptimizer
+from utils import AdamOptimizer, zero_grad
 
 
 # ---
@@ -25,14 +25,14 @@ ITERS = 500
 class MLP:
     def __init__(self):
         self.params = {
-        'w1': Tensor(np.random.normal(size=(128, 1)), requires_grad=True), 'b1': Tensor(np.random.normal(size=(128, 1)), requires_grad=True),
-        'w2': Tensor(np.random.normal(size=(1, 128)), requires_grad=True), 'b2': Tensor(np.random.normal(size=(1, 1)), requires_grad=True),
+        'w1': nabla.randn((128, 1), requires_grad=True), 'b1': nabla.zeros((128, 1), requires_grad=True),
+        'w2': nabla.randn((1, 128), requires_grad=True), 'b2': nabla.zeros((1, 1), requires_grad=True),
         }
     def __call__(self, x):
         a1 = (self.params['w1'].dot(x) + self.params['b1']).sigmoid()
         y = self.params['w2'].dot(a1) + self.params['b2']
         return y
-        
+
 def sample_data():
     
     # Train samples
@@ -48,13 +48,6 @@ def sample_data():
     xtrain, ytrain, xtest, ytest = Tensor(xtrain), Tensor(ytrain), Tensor(xtest), Tensor(ytest)
 
     return xtrain, ytrain, xtest, ytest
-
-def zero_grad(model):
-    for param in model.params.values():
-        param.grad = np.zeros_like(param.data)
-        param.op = None
-        param.parents = None
-    return model
 
 def mse_loss(pred, gt):
     loss = ((pred - gt)**2).mean()

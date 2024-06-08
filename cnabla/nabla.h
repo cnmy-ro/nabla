@@ -15,7 +15,7 @@ struct Tensor {
     int shape[2];
     bool requires_grad;
     struct Tensor* parents[2];
-    char func_name[10];
+    char op_name[10];
 };
 typedef struct Tensor Tensor;
 
@@ -23,15 +23,15 @@ typedef struct Tensor Tensor;
 // ---
 // Utils
 
-void alloc_tensor(Tensor* x, int nrows, int ncols, bool requires_grad) {
-    alloc_array(&(x->data), nrows, ncols);
-    alloc_array(&(x->grad), nrows, ncols);
+void malloc_tensor(Tensor* x, int nrows, int ncols, bool requires_grad) {
+    malloc_array(&(x->data), nrows, ncols);
+    malloc_array(&(x->grad), nrows, ncols);
     x->shape[0] = nrows;
     x->shape[1] = ncols;
     x->requires_grad = requires_grad;
     x->parents[0] = NULL;
     x->parents[1] = NULL;
-    strcpy(x->func_name, "");
+    strcpy(x->op_name, "");
 }
 void free_tensor(Tensor* x) {
     free_array(&(x->data));
@@ -41,65 +41,81 @@ void free_tensor(Tensor* x) {
     x->requires_grad = false;
     x->parents[0] = NULL;
     x->parents[1] = NULL;
-    strcpy(x->func_name, "");
+    strcpy(x->op_name, "");
 }
 
-void fill_tensor_constant(Tensor* x, float fill_value) {
-    fill_array_constant(&(x->data), fill_value);
-    fill_array_constant(&(x->grad), 0);
+void init_tensor_value(Tensor* x, float fill_value) {
+    init_array_value(&(x->data), fill_value);
+    init_array_value(&(x->grad), 0);
 }
-void fill_tensor_uniform_random(Tensor* x) {
-    fill_array_uniform_random(&(x->data));
-    fill_array_constant(&(x->grad), 0);
+void init_tensor_rand_uniform(Tensor* x) {
+    init_array_rand_uniform(&(x->data));
+    init_array_value(&(x->grad), 0);
 }
-void fill_tensor_gaussian_random(Tensor* x) {
-    fill_array_gaussian_random(&(x->data));
-    fill_array_constant(&(x->grad), 0);
+void init_tensor_rand_normal(Tensor* x) {
+    init_array_rand_normal(&(x->data));
+    init_array_value(&(x->grad), 0);
 }
 
 void zero_grad(Tensor* x) {
-    fill_array_constant(&(x->grad), 0);
+    init_array_value(&(x->grad), 0);
 }
 void detach(Tensor* x) {
     x->parents[0] = NULL;
     x->parents[1] = NULL;
-    strcpy(x->func_name, "");
+    strcpy(x->op_name, "");
 }
 
 
 // ---
 // Operators
 
-void mul_fx(Tensor* x1, Tensor* x2, Tensor* fx) {    
-    alloc_tensor(fx, x1->shape[0], x1->shape[1], true);
-    mul(&(x1->data), &(x2->data), &(fx->data));
-    fill_array_constant(&(fx->grad), 0);
-    fx->parents[0] = x1;
-    fx->parents[1] = x2;
-    strcpy(fx->func_name, "mul_fx");
+void mul_fx(Tensor* x1, Tensor* x2, Tensor* y) {
+    mul(&(x1->data), &(x2->data), &(y->data));
+    init_array_value(&(y->grad), 0);
+    y->parents[0] = x1;
+    y->parents[1] = x2;
+    strcpy(y->op_name, "mul_fx");
 }
-void mul_vjp(Tensor* fx, Array* x1_vjp, Array* x2_vjp) {
-    alloc_array(x1_vjp, fx->parents[0]->shape[0], fx->parents[0]->shape[1]);
-    alloc_array(x2_vjp, fx->parents[1]->shape[0], fx->parents[1]->shape[1]);
-    mul(&(fx->grad), &(fx->parents[1]->data), x1_vjp);
-    mul(&(fx->grad), &(fx->parents[0]->data), x2_vjp);
+void mul_vjp(Tensor* y, Array* x1_vjp, Array* x2_vjp) {
+    mul(&(y->grad), &(y->parents[1]->data), x1_vjp);
+    mul(&(y->grad), &(y->parents[0]->data), x2_vjp);
 }
 
-void sum_fx(Tensor* x, Tensor* fx) {    
-    alloc_tensor(fx, 1, 1, true);
-    sum(&(x->data), &(fx->data));
-    fill_array_constant(&(fx->grad), 0);
-    fx->parents[0] = x;
-    strcpy(fx->func_name, "sum_fx");
+void sum_fx(Tensor* x, Tensor* y) {
+    sum(&(x->data), &(y->data));
+    init_array_value(&(y->grad), 0);
+    y->parents[0] = x;
+    strcpy(y->op_name, "sum_fx");
 }
-void sum_vjp(Tensor* fx, Array* x_vjp) {
-    alloc_array(x_vjp, fx->parents[0]->shape[0], fx->parents[0]->shape[1]);
-    fill_array_constant(x_vjp, *(fx->grad.data));
+void sum_vjp(Tensor* y, Array* x_vjp) {    
+    init_array_value(x_vjp, *(y->grad.data));
 }
 
 
 // ---
 // Backward function
+
+bool is_leaf_tensor(Tensor* x) {
+    if (strcmp(x->op_name, "") == 0)
+        return true;
+    else
+        return false;
+}
+
+bool is_unary_op(char* op_name) {
+    if (strcmp(op_name, "sum_fx") == 0)
+        return true;
+    else
+        return false;
+}
+
+bool is_binary_op(char* op_name) {
+    if ((strcmp(op_name, "add_fx") == 0) || (strcmp(op_name, "mul_fx") == 0))
+        return true;
+    else
+        return false;
+}
 
 void backward(Tensor* x, Array* grad) {
     
@@ -107,22 +123,35 @@ void backward(Tensor* x, Array* grad) {
     add(&(x->grad), grad, &(x->grad));
 
     // Compute VJP for parents
-    Array parents_vjp[2];
-    if (strcmp(x->func_name, "mul_fx") == 0)
-        mul_vjp(x, &(parents_vjp[0]), &(parents_vjp[1]));
-    else if (strcmp(x->func_name, "sum_fx") == 0)
-        sum_vjp(x, &(parents_vjp[0]));
+    int num_parents;
+    if (is_leaf_tensor(x))
+        num_parents = 0;
+    else if (is_unary_op(x->op_name))
+        num_parents = 1;
+    else if (is_binary_op(x->op_name))
+        num_parents = 2;
+    
+    Array parent_vjps[num_parents];
+    for (int p=0; p<num_parents; p++)
+        malloc_array(&parent_vjps[p], x->parents[p]->shape[0], x->parents[p]->shape[1]);
+    if (strcmp(x->op_name, "mul_fx") == 0)
+        mul_vjp(x, &(parent_vjps[0]), &(parent_vjps[1]));
+    else if (strcmp(x->op_name, "sum_fx") == 0)
+        sum_vjp(x, &(parent_vjps[0]));
 
     // Recursively call backward() for each required parent
-    for (int p=0; p<2; p++) {
+    for (int p=0; p<num_parents; p++) {
         
         if (x->parents[p] == NULL)
             continue;
         if (x->parents[p]->requires_grad == false)
             continue;
         
-        backward(x->parents[p], &(parents_vjp[p]));
+        backward(x->parents[p], &(parent_vjps[p]));
     }
+    
+    for (int p=0; p<num_parents; p++)
+        free_array(&parent_vjps[p]);
 }
 
 

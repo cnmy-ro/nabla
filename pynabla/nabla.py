@@ -2,16 +2,19 @@ from abc import ABC, abstractmethod
 from typing import List
 import numpy as np
 
-_enable_grad = True  # Global switch
+_grad_enabled = True  # Global switch
 
 
 # ---
-# Utils
+# Core functions
 
 def enable_grad(flag):
-    global _enable_grad
-    _enable_grad = flag
+    global _grad_enabled
+    _grad_enabled = flag
 
+def show_dag(tensor):
+    # TODO: trace the history of the given tensor and show as DAG
+    pass
 
 # ---
 # Core classes
@@ -27,14 +30,17 @@ class Tensor:
         self.shape = data.shape
     
     def backward(self, grad: np.ndarray = np.array([[1.]])): # Backprop function
-        if not _enable_grad: raise RuntimeError("Called backward() but gradient computation is disabled.")
+        if not _grad_enabled: raise RuntimeError("Called backward() but gradient computation is disabled.")
         self._accumulate_grad(grad)
         if self.op is not None:  # Recursive depth-first tree traversal
-            parents_vjp = self.op.vjp(self, *self.parents)
+            parent_vjps = self.op.vjp(self, *self.parents)
             for i in range(len(self.parents)):
                 if self.parents[i].requires_grad:
-                    parent_grad = parents_vjp[i]
+                    parent_grad = parent_vjps[i]
                     self.parents[i].backward(parent_grad)
+
+    def detach(self):
+        self.op = self.parents = None
 
     def _accumulate_grad(self, grad):
         b_dim = None  # If this tensor had size=1 in a certain dim and was broadcast during forward pass, its grad will have size>1 in that dim
@@ -73,7 +79,7 @@ class Operator(ABC):
 
         y = self.fx(*args)
         y = Tensor(y)
-        if _enable_grad:
+        if _grad_enabled:
             y.requires_grad = True
             y.op = self
             y.parents = args
@@ -99,7 +105,7 @@ class Operator(ABC):
         ...
 
 # ---
-# Unary point-wise ops
+# Point-wise unary ops
 
 class Neg(Operator):
     def fx(self, x):     return -x.data
@@ -120,14 +126,14 @@ class ReLU(Operator):
         return [x_grad]
 
 class LeakyReLU(Operator):
-    def __init__(self, alpha):  self.alpha = alpha
+    def __init__(self, alpha=0.2): self.alpha = alpha
     def fx(self, x):
         y = x.data.copy()
-        y[x.data < 0.] *= self.alpha
+        y[x.data < 0] *= self.alpha
         return y
     def vjp(self, y, x):
         x_grad = y.grad
-        x_grad[x.data < 0.] *= self.alpha
+        x_grad[x.data < 0] *= self.alpha
         return [x_grad]
 
 class Sigmoid(Operator):
@@ -143,19 +149,8 @@ class Tanh(Operator):
         x_grad = y.grad * (1. - np.tanh(x.data)**2)
         return [x_grad]
 
-
 # ---
-# Unary shape-altering ops
-
-class Sum(Operator):
-    def fx(self, x):     return x.data.sum(keepdims=True)
-    def vjp(self, y, x):
-        x_grad = np.full(x.shape, y.grad * 1.)
-        return [x_grad]
-
-
-# ---
-# Binary point-wise ops
+# Point-wise binary ops
 
 class Add(Operator):
     def fx(self, x1, x2): return x1.data + x2.data
@@ -191,9 +186,18 @@ class Pow(Operator):
             x2_grad = np.zeros_like(x2.data)
         return [x1_grad, x2_grad]
 
+# ---
+# Shape-altering unary ops
+
+class Sum(Operator):
+    # TODO: sum along specified dim
+    def fx(self, x):     return x.data.sum(keepdims=True)
+    def vjp(self, y, x):
+        x_grad = np.full(x.shape, y.grad * 1.)
+        return [x_grad]
 
 # ---
-# Binary shape-altering ops
+# Shape-altering binary ops
 
 class Dot(Operator):
     def fx(self, x1, x2): return x1.data @ x2.data
@@ -201,21 +205,40 @@ class Dot(Operator):
         x1_grad, x2_grad = y.grad @ x2.data.T, x1.data.T @ y.grad
         return [x1_grad, x2_grad]
 
-
-# ---
-# NN ops
-
-class Linear(Operator):
-    def fx(self, x1, x2): pass
-    def vjp(self, y, x1, x2): 
-        pass
-
 class Conv1D(Operator):
-    def fx(self, x1, x2): pass
+    def fx(self, x1, x2):
+        # TODO
+        pass
     def vjp(self, y, x1, x2): 
+        # TODO
         pass
 
 class Conv2D(Operator):
-    def fx(self, x1, x2): pass
-    def vjp(self, y, x1, x2): 
+    def fx(self, x1, x2): 
+        # TODO
         pass
+    def vjp(self, y, x1, x2): 
+        # TODO
+        pass
+
+# ---
+# Shape ops
+# TODO: reshape, flatten, permute, squeeze, unsqueeze
+
+# ---
+# Convenience functions
+
+def zeros(shape, requires_grad=False):
+    return Tensor(np.zeros(shape), requires_grad=requires_grad)
+
+def ones(shape, requires_grad=False):
+    return Tensor(np.ones(shape), requires_grad=requires_grad)
+
+def rand(shape, requires_grad=False):
+    return Tensor(np.random.rand(size=shape), requires_grad=requires_grad)
+
+def randn(shape, requires_grad=False):
+    return Tensor(np.random.normal(size=shape), requires_grad=requires_grad)
+
+def randint(start, end, shape, requires_grad=False):
+    return Tensor(np.random.randint(start, end, shape), requires_grad=requires_grad)

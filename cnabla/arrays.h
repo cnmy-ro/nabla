@@ -20,7 +20,7 @@ typedef struct Array Array;
 // ---
 // Utils
 
-void alloc_array(Array* x, int nrows, int ncols) {	
+void malloc_array(Array* x, int nrows, int ncols) {	
 	x->data = malloc(nrows * ncols * sizeof(float));
 	x->shape[0] = nrows;
 	x->shape[1] = ncols;
@@ -31,7 +31,7 @@ void free_array(Array* x) {
 	x->shape[1] = 0;
 }
 
-void fill_array_constant(Array* x, float fill_value) {
+void init_array_value(Array* x, float fill_value) {
 	int nrows = x->shape[0];
 	int ncols = x->shape[1];
 	for (int i=0; i<nrows; i++) {
@@ -39,7 +39,7 @@ void fill_array_constant(Array* x, float fill_value) {
 			*(x->data + i*ncols + j) = fill_value;
 	}
 }
-void fill_array_uniform_random(Array* x) {
+void init_array_rand_uniform(Array* x) {
 	srand(time(NULL));
 	int nrows = x->shape[0];
 	int ncols = x->shape[1];
@@ -48,7 +48,7 @@ void fill_array_uniform_random(Array* x) {
 			*(x->data + i*ncols + j) = rand() / (float)RAND_MAX;
 	}
 }
-void fill_array_gaussian_random(Array* x) {
+void init_array_rand_normal(Array* x) {
 	// TODO
 	// Use Box-Muller transform: https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
 }
@@ -81,7 +81,6 @@ void print_array(Array* x) {
 
 void row_slice(Array* x, Array* y, int row_idx) {
 	int ncols = x->shape[1];
-	alloc_array(y, ncols, 1);
 	for (int j=0; j<ncols; j++)
 		*(y->data + j) = *(x->data + row_idx*ncols + j);
 }
@@ -89,7 +88,6 @@ void row_slice(Array* x, Array* y, int row_idx) {
 void col_slice(Array* x, Array* y, int col_idx) {
 	int nrows = x->shape[0];
 	int ncols = x->shape[1];
-	alloc_array(y, nrows, 1);
 	for (int i=0; i<nrows; i++)
 		*(y->data + i) = *(x->data + i*ncols + col_idx);
 }
@@ -97,7 +95,6 @@ void col_slice(Array* x, Array* y, int col_idx) {
 void add(Array* x1, Array* x2, Array* y) {	
 	int nrows = x1->shape[0];
 	int ncols = x1->shape[1];
-	alloc_array(y, nrows, ncols);
 	int idx;
 	for (int i=0; i<nrows; i++) {
 		for (int j=0; j<ncols; j++) {
@@ -110,7 +107,6 @@ void add(Array* x1, Array* x2, Array* y) {
 void sub(Array* x1, Array* x2, Array* y) {	
 	int nrows = x1->shape[0];
 	int ncols = x1->shape[1];
-	alloc_array(y, nrows, ncols);
 	int idx;
 	for (int i=0; i<nrows; i++) {
 		for (int j=0; j<ncols; j++) {
@@ -123,7 +119,6 @@ void sub(Array* x1, Array* x2, Array* y) {
 void mul(Array* x1, Array* x2, Array* y) {	
 	int nrows = x1->shape[0];
 	int ncols = x1->shape[1];
-	alloc_array(y, nrows, ncols);
 	int idx;
 	for (int i=0; i<nrows; i++) {
 		for (int j=0; j<ncols; j++) {
@@ -136,7 +131,6 @@ void mul(Array* x1, Array* x2, Array* y) {
 void truediv(Array* x1, Array* x2, Array* y) {
 	int nrows = x1->shape[0];
 	int ncols = x1->shape[1];
-	alloc_array(y, nrows, ncols);
 	int idx;
 	for (int i=0; i<nrows; i++) {
 		for (int j=0; j<ncols; j++)	{
@@ -149,7 +143,6 @@ void truediv(Array* x1, Array* x2, Array* y) {
 void pow_(Array* x, float p, Array* y) {
 	int nrows = x->shape[0];
 	int ncols = x->shape[1];
-	alloc_array(y, nrows, ncols);
 	int idx;
 	for (int i=0; i<nrows; i++) {
 		for (int j=0; j<ncols; j++)	{
@@ -162,7 +155,6 @@ void pow_(Array* x, float p, Array* y) {
 void log_(Array* x, Array* y) {
 	int nrows = x->shape[0];
 	int ncols = x->shape[1];
-	alloc_array(y, nrows, ncols);
 	int idx;
 	for (int i=0; i<nrows; i++) {
 		for (int j=0; j<ncols; j++)	{
@@ -175,8 +167,7 @@ void log_(Array* x, Array* y) {
 void sum(Array* x, Array* y) {	
 	int nrows = x->shape[0];
 	int ncols = x->shape[1];
-	alloc_array(y, 1, 1);
-	fill_array_constant(y, 0);
+	init_array_value(y, 0);
 	int idx;
 	for (int i=0; i<nrows; i++) {
 		for (int j=0; j<ncols; j++)	{
@@ -188,6 +179,7 @@ void sum(Array* x, Array* y) {
 
 void dot(Array* x1, Array* x2, Array* y) {
 	Array prod;
+	malloc_array(&prod, x1->shape[0], x1->shape[1]);
 	mul(x1, x2, &prod);
 	sum(&prod, y);
 	free_array(&prod);
@@ -196,20 +188,23 @@ void dot(Array* x1, Array* x2, Array* y) {
 void matmul(Array* x1, Array* x2, Array* y) {
 	int nrows = x1->shape[0];
 	int ncols = x1->shape[1];
-	alloc_array(y, nrows, ncols);
 	int idx;
+	Array x1_row, x2_col, dotprod;
+	malloc_array(&x1_row, ncols, 1);
+	malloc_array(&x2_col, nrows, 1);
+	malloc_array(&dotprod, 1, 1);
 	for (int i=0; i<nrows; i++) {
-		for (int j=0; j<ncols; j++)	{
-			Array x1_row, x2_col, dot_prod;
+		for (int j=0; j<ncols; j++)	{			
 			row_slice(x1, &x1_row, i);
 			col_slice(x2, &x2_col, j);
-			dot(&x1_row, &x2_col, &dot_prod);
+			dot(&x1_row, &x2_col, &dotprod);
 			idx = i*ncols + j;
-			*(y->data + idx) = *(dot_prod.data);
-			free_array(&x1_row);
-			free_array(&x2_col);
+			*(y->data + idx) = *(dotprod.data);			
 		}
 	}
+	free_array(&x1_row);
+	free_array(&x2_col);
+	free_array(&dotprod);
 }
 
 void conv1d(Array* x, Array* ker, Array* y) {

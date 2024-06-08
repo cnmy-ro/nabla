@@ -3,7 +3,7 @@ import nabla
 from nabla import Tensor
 
 
-def mul():
+def test_mul():
 	a = Tensor(np.ones((3,3,3))*2, requires_grad=True)
 	b = Tensor(np.ones((3,3,3))*4, requires_grad=True)
 	c = a * b
@@ -23,7 +23,7 @@ def test_dot():
 	print(a.grad)
 	print(b.grad)
 
-def test_tensor_overwrite():
+def test_tensoroverwrite():
 	a = Tensor(np.ones((4,1))*3, requires_grad=True)
 	b = Tensor(np.ones((4,1)), requires_grad=True)
 	a = a * b
@@ -34,4 +34,4 @@ def test_tensor_overwrite():
 
 
 # test_dot()
-test_tensor_overwrite()
+test_tensoroverwrite()
