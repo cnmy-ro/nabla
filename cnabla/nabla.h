@@ -56,6 +56,10 @@ void init_tensor_rand_normal(Tensor* x) {
     init_array_rand_normal(&(x->data));
     init_array_value(&(x->grad), 0);
 }
+void init_tensor_rand_int(Tensor* x, int start, int end) {
+    init_array_rand_int(&(x->data), start, end);
+    init_array_value(&(x->grad), 0);
+}
 
 void zero_grad(Tensor* x) {
     init_array_value(&(x->grad), 0);
@@ -65,7 +69,9 @@ void detach(Tensor* x) {
     x->parents[1] = NULL;
     strcpy(x->op_name, "");
 }
-
+void print_tensor(Tensor* x) {
+    print_array(&(x->data));
+}
 
 // ---
 // Operators
@@ -89,7 +95,7 @@ void sum_fx(Tensor* x, Tensor* y) {
     strcpy(y->op_name, "sum_fx");
 }
 void sum_vjp(Tensor* y, Array* x_vjp) {    
-    init_array_value(x_vjp, *(y->grad.data));
+    init_array_value(x_vjp, *(y->grad.arr));
 }
 
 
