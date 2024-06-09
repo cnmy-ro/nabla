@@ -73,7 +73,7 @@ void init_array_linspace(Array* x, float start, float end, int steps) {
 		}
 	}
 }
-void init_array_rand_uniform(Array* x) {
+void init_array_rand(Array* x) {
 	srand(time(NULL));
 	int nrows = x->shape[0];
 	int ncols = x->shape[1];
@@ -82,12 +82,20 @@ void init_array_rand_uniform(Array* x) {
 			*(x->arr + i*ncols + j) = rand() / (float)RAND_MAX;
 	}
 }
-void init_array_rand_normal(Array* x) {
+void init_array_randn(Array* x) {
 	// TODO
 	// Use Box-Muller transform: https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
 }
-void init_array_rand_int(Array* x, int start, int end) {
-	// TODO
+void init_array_randint(Array* x, int start, int end) {
+	srand(time(NULL));
+	int nrows = x->shape[0];
+	int ncols = x->shape[1];
+	for (int i=0; i<nrows; i++) {
+		for (int j=0; j<ncols; j++) {
+			randint = (rand() / (float)RAND_MAX) * (end - start) + start;
+			*(x->arr + i*ncols + j) = (float)(int)randint;
+		}
+	}
 }
 
 

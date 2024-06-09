@@ -48,16 +48,16 @@ void init_tensor_value(Tensor* x, float fill_value) {
     init_array_value(&(x->data), fill_value);
     init_array_value(&(x->grad), 0);
 }
-void init_tensor_rand_uniform(Tensor* x) {
-    init_array_rand_uniform(&(x->data));
+void init_tensor_rand(Tensor* x) {
+    init_array_rand(&(x->data));
     init_array_value(&(x->grad), 0);
 }
-void init_tensor_rand_normal(Tensor* x) {
-    init_array_rand_normal(&(x->data));
+void init_tensor_randn(Tensor* x) {
+    init_array_randn(&(x->data));
     init_array_value(&(x->grad), 0);
 }
-void init_tensor_rand_int(Tensor* x, int start, int end) {
-    init_array_rand_int(&(x->data), start, end);
+void init_tensor_randint(Tensor* x, int start, int end) {
+    init_array_randint(&(x->data), start, end);
     init_array_value(&(x->grad), 0);
 }
 

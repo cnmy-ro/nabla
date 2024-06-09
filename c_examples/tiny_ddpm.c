@@ -34,6 +34,8 @@ void init_model(NoiseModel* model, int hidden_dim) {
 }
 void destroy_model(NoiseModel* model) {
 }
+void model_zero_grad(NoiseModel* model) {
+}
 
 
 // ---
@@ -57,9 +59,6 @@ void optimizer_step(AdamOptimizer* opt, NoiseModel* model) {
 
 // ---
 // Utils
-
-void model_zero_grad(NoiseModel* model) {
-}
 
 void sample_data(Tensor* batch) {
 }
@@ -93,7 +92,7 @@ void main() {
 	AdamOptimizer opt;
 	init_optimizer(&opt, lr);
 
-	// Misc stuff
+	// Working tensors and arrays
 	Tensor batch, t_batch, loss;
 	malloc_tensor(&batch, 1, batch_size, true);
 	malloc_tensor(&t_batch, 1, batch_size, true);
@@ -105,7 +104,7 @@ void main() {
 	// Training loop
 	for (int it=1; it<=num_train_iters; it++) {
 		sample_data(&batch);
-        init_tensor_rand_int(&t_batch, 0, num_diffusion_steps);
+        init_tensor_randint(&t_batch, 0, num_diffusion_steps);
         criterion(&batch, &t_batch, &model, &loss);
         backward(&loss, &init_grad);
         optimizer_step(&opt, &model);
