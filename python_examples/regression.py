@@ -25,23 +25,23 @@ ITERS = 500
 class MLP:
     def __init__(self):
         self.params = {
-        'w1': nabla.randn((128, 1), requires_grad=True), 'b1': nabla.zeros((128, 1), requires_grad=True),
-        'w2': nabla.randn((1, 128), requires_grad=True), 'b2': nabla.zeros((1, 1), requires_grad=True),
+        'w1': nabla.randn((1, 128), requires_grad=True), 'b1': nabla.zeros((1, 128), requires_grad=True),
+        'w2': nabla.randn((128, 1), requires_grad=True), 'b2': nabla.zeros((1, 1), requires_grad=True),
         }
     def __call__(self, x):
-        a1 = (self.params['w1'].dot(x) + self.params['b1']).sigmoid()
-        y = self.params['w2'].dot(a1) + self.params['b2']
+        a1 = (x.dot(self.params['w1']) + self.params['b1']).sigmoid()
+        y = a1.dot(self.params['w2']) + self.params['b2']
         return y
 
 def sample_data():
     
     # Train samples
-    xtrain = (np.random.rand(1, BATCH_SIZE) - 0.5) * 2 * np.pi
-    noise = np.random.normal(0, 0.1, size=(1, BATCH_SIZE))
+    xtrain = (np.random.rand(BATCH_SIZE, 1) - 0.5) * 2 * np.pi
+    noise = np.random.normal(0, 0.1, size=(BATCH_SIZE, 1))
     ytrain = np.sin(xtrain) + noise
 
     # Test samples
-    xtest = np.expand_dims(np.linspace(-np.pi, np.pi, BATCH_SIZE), axis=0)
+    xtest = np.expand_dims(np.linspace(-np.pi, np.pi, BATCH_SIZE), axis=1)
     ytest = np.sin(xtest)
 
     # To Tensor, shape (len, batch)
@@ -69,8 +69,8 @@ def main():
     nabla.enable_grad(False)
     ytestpred = model(xtest)
     nabla.enable_grad(True)
-    testgt_plot = plt.plot(xtrain.data[0,:], ytrain.data[0,:], c='tab:blue', marker='.', ls='', alpha=0.5)[0]
-    testpred_plot = plt.plot(xtest.data[0,:], ytestpred.data[0,:], c='tab:orange')[0]
+    testgt_plot = plt.plot(xtrain.data[:,0], ytrain.data[:,0], c='tab:blue', marker='.', ls='', alpha=0.5)[0]
+    testpred_plot = plt.plot(xtest.data[:,0], ytestpred.data[:,0], c='tab:orange')[0]
     plt.ylim(-1.2, 1.2)
     plt.ion(); plt.show()    
 
@@ -88,8 +88,8 @@ def main():
         # Test and viz
         nabla.enable_grad(False)
         ytestpred = model(xtest)
-        nabla.enable_grad(True)        
-        testpred_plot.set_ydata(ytestpred.data[0,:])
+        nabla.enable_grad(True)
+        testpred_plot.set_ydata(ytestpred.data[:,0])
         fig.canvas.draw()
         fig.canvas.flush_events()
         # fig.savefig(f"./outputs/regression/{str(it).zfill(5)}.png")

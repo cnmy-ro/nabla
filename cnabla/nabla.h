@@ -69,6 +69,7 @@ void detach(Tensor* x) {
     x->parents[1] = NULL;
     strcpy(x->op_name, "");
 }
+
 void print_tensor(Tensor* x) {
     print_array(&(x->data));
 }
@@ -103,19 +104,17 @@ void sum_vjp(Tensor* y, Array* x_vjp) {
 // Backward function
 
 bool is_leaf_tensor(Tensor* x) {
-    if (strcmp(x->op_name, "") == 0)
+    if ((x->parents[0] == NULL) && (x->parents[1] == NULL))
         return true;
     else
         return false;
 }
-
 bool is_unary_op(char* op_name) {
     if (strcmp(op_name, "sum_fx") == 0)
         return true;
     else
         return false;
 }
-
 bool is_binary_op(char* op_name) {
     if ((strcmp(op_name, "add_fx") == 0) || (strcmp(op_name, "mul_fx") == 0))
         return true;

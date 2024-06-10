@@ -35,33 +35,33 @@ BETA = 1e-2
 class Encoder:
     def __init__(self):
         self.params = {
-        'w1': nabla.randn((HIDDEN_DIM, 2), requires_grad=True),                 'b1': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
-        'w2': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True),        'b2': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
-        'w3': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True),        'b3': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
-        'w4_mean': nabla.randn((LATENT_DIM, HIDDEN_DIM), requires_grad=True),   'b4_mean': nabla.zeros((LATENT_DIM, 1), requires_grad=True),
-        'w4_logvar': nabla.randn((LATENT_DIM, HIDDEN_DIM), requires_grad=True), 'b4_logvar': nabla.zeros((LATENT_DIM, 1), requires_grad=True)
+        'w1': nabla.randn((2, HIDDEN_DIM), requires_grad=True),                 'b1': nabla.zeros((1, HIDDEN_DIM), requires_grad=True),
+        'w2': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True),        'b2': nabla.zeros((1, HIDDEN_DIM), requires_grad=True),
+        'w3': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True),        'b3': nabla.zeros((1, HIDDEN_DIM), requires_grad=True),
+        'w4_mean': nabla.randn((HIDDEN_DIM, LATENT_DIM), requires_grad=True),   'b4_mean': nabla.zeros((1, LATENT_DIM), requires_grad=True),
+        'w4_logvar': nabla.randn((HIDDEN_DIM, LATENT_DIM), requires_grad=True), 'b4_logvar': nabla.zeros((1, LATENT_DIM), requires_grad=True)
         }
     def __call__(self, x):
-        a1 = (self.params['w1'].dot(x) + self.params['b1']).sigmoid()
-        a2 = (self.params['w2'].dot(a1) + self.params['b2']).sigmoid()
-        a3 = (self.params['w3'].dot(a2) + self.params['b3']).sigmoid()
-        z_mean = self.params['w4_mean'].dot(a3) + self.params['b4_mean']
-        z_logvar = self.params['w4_logvar'].dot(a3) + self.params['b4_logvar']
+        a1 = (x.dot(self.params['w1']) + self.params['b1']).sigmoid()
+        a2 = (a1.dot(self.params['w2']) + self.params['b2']).sigmoid()
+        a3 = (a2.dot(self.params['w3']) + self.params['b3']).sigmoid()
+        z_mean = a3.dot(self.params['w4_mean']) + self.params['b4_mean']
+        z_logvar = a3.dot(self.params['w4_logvar']) + self.params['b4_logvar']
         return z_mean, z_logvar
 
 class Decoder:
     def __init__(self):
         self.params = {
-        'w1': nabla.randn((HIDDEN_DIM, LATENT_DIM), requires_grad=True), 'b1': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
-        'w2': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True), 'b2': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
-        'w3': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True), 'b3': nabla.zeros((HIDDEN_DIM, 1), requires_grad=True),
-        'w4': nabla.randn((2, HIDDEN_DIM), requires_grad=True),          'b4': nabla.zeros((2, 1), requires_grad=True)
+        'w1': nabla.randn((LATENT_DIM, HIDDEN_DIM), requires_grad=True), 'b1': nabla.zeros((1, HIDDEN_DIM), requires_grad=True),
+        'w2': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True), 'b2': nabla.zeros((1, HIDDEN_DIM), requires_grad=True),
+        'w3': nabla.randn((HIDDEN_DIM, HIDDEN_DIM), requires_grad=True), 'b3': nabla.zeros((1, HIDDEN_DIM), requires_grad=True),
+        'w4': nabla.randn((HIDDEN_DIM, 2), requires_grad=True),          'b4': nabla.zeros((1, 2), requires_grad=True)
         }
     def __call__(self, z):
-        a1 = (self.params['w1'].dot(z) + self.params['b1']).sigmoid()
-        a2 = (self.params['w2'].dot(a1) + self.params['b2']).sigmoid()
-        a3 = (self.params['w3'].dot(a2) + self.params['b3']).sigmoid()
-        x = self.params['w4'].dot(a3) + self.params['b4']
+        a1 = (z.dot(self.params['w1']) + self.params['b1']).sigmoid()
+        a2 = (a1.dot(self.params['w2']) + self.params['b2']).sigmoid()
+        a3 = (a2.dot(self.params['w3']) + self.params['b3']).sigmoid()
+        x = a3.dot(self.params['w4']) + self.params['b4']
         return x
         
 def sample_data():
@@ -72,18 +72,17 @@ def sample_data():
     data_sample = np.stack([X[:, 0], X[:, 2]], axis=1)
     data_sample = (data_sample - data_sample.min()) / (data_sample.max() - data_sample.min())
     data_sample = data_sample * 2. - 1.
-    data_sample = data_sample.T  # To shape (len, batch)
     data_sample = Tensor(data_sample)
     return data_sample
 
 def sample_model(dec):
-    z = nabla.randn(LATENT_DIM, BATCH_SIZE)
+    z = nabla.randn((BATCH_SIZE, LATENT_DIM))
     model_sample = dec(z)
     return model_sample
 
 def encode_decode(enc, dec, data_sample):
     z_mean, z_logvar = enc(data_sample)
-    z = z_mean + E**(z_logvar * 0.5) * nabla.randn(LATENT_DIM, BATCH_SIZE)  # Reparam trick
+    z = z_mean + E**(z_logvar * 0.5) * nabla.randn((BATCH_SIZE, LATENT_DIM))  # Reparam trick
     recon = dec(z)
     return z_mean, z_logvar, recon
 
@@ -114,8 +113,8 @@ def main():
     model_sample = sample_model(dec)
     nabla.enable_grad(True)
     fig, ax = plt.subplots()
-    data_sample_plot = ax.plot(data_sample.data[0, :], data_sample.data[1, :], c='tab:blue', marker='.', ls='', label='Data')[0]
-    model_sample_plot = ax.plot(model_sample.data[0, :], model_sample.data[1, :], c='tab:red', marker='.', ls='', label='Model')[0]
+    data_sample_plot = ax.plot(data_sample.data[:,0], data_sample.data[:,1], c='tab:blue', marker='.', ls='', label='Data')[0]
+    model_sample_plot = ax.plot(model_sample.data[:,0], model_sample.data[:,1], c='tab:red', marker='.', ls='', label='Model')[0]
     ax.set_xlim(-1.2, 1.2); ax.set_ylim(-1.2, 1.2); ax.set_title("Samples")
     fig.legend(); fig.tight_layout(); plt.ion(); plt.show()
 
@@ -137,11 +136,11 @@ def main():
         # Sample and viz
         losses_input_recon.append(loss_input_recon.data.squeeze()); losses_latent_prior.append(loss_latent_prior.data.squeeze())
         if it % 10 == 0:
-            data_sample_plot.set_xdata(data_sample.data[0, :]); data_sample_plot.set_ydata(data_sample.data[1, :])
+            data_sample_plot.set_xdata(data_sample.data[:,0]); data_sample_plot.set_ydata(data_sample.data[:,1])
             nabla.enable_grad(False)
             model_sample = sample_model(dec)
             nabla.enable_grad(True)
-            model_sample_plot.set_xdata(model_sample.data[0, :]); model_sample_plot.set_ydata(model_sample.data[1, :])
+            model_sample_plot.set_xdata(model_sample.data[:,0]); model_sample_plot.set_ydata(model_sample.data[:,1])
             fig.canvas.draw(); fig.canvas.flush_events()
 
     # Plot loss curves

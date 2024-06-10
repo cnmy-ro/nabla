@@ -43,12 +43,12 @@ class Tensor:
         self.op = self.parents = None
 
     def _accumulate_grad(self, grad):
-        b_dim = None  # If this tensor had size=1 in a certain dim and was broadcast during forward pass, its grad will have size>1 in that dim
+        bc_dims = []  # If this tensor had size=1 in certain dims and was broadcast during forward pass, its grad will have size>1 in those dims
         for dim in range(len(self.shape)):
             if self.shape[dim] == 1 and grad.shape[dim] > 1:
-                b_dim = dim
-        if b_dim is None: self.grad += grad
-        else:             self.grad += grad.sum(axis=b_dim, keepdims=True)
+                bc_dims.append(dim)
+        if len(bc_dims) > 0: grad = np.apply_over_axes(np.sum, grad, bc_dims)
+        self.grad += grad
 
     def __str__(self):            return self.data.__str__()
     def __repr__(self):           return self.data.__repr__()

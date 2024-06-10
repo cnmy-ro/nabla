@@ -90,6 +90,7 @@ void init_array_randint(Array* x, int start, int end) {
 	srand(time(NULL));
 	int nrows = x->shape[0];
 	int ncols = x->shape[1];
+	float randint;
 	for (int i=0; i<nrows; i++) {
 		for (int j=0; j<ncols; j++) {
 			randint = (rand() / (float)RAND_MAX) * (end - start) + start;
@@ -107,14 +108,12 @@ void row_slice(Array* x, Array* y, int row_idx) {
 	for (int j=0; j<ncols; j++)
 		*(y->arr + j) = *(x->arr + row_idx*ncols + j);
 }
-
 void col_slice(Array* x, Array* y, int col_idx) {
 	int nrows = x->shape[0];
 	int ncols = x->shape[1];
 	for (int i=0; i<nrows; i++)
 		*(y->arr + i) = *(x->arr + i*ncols + col_idx);
 }
-
 void add(Array* x1, Array* x2, Array* y) {	
 	int nrows = x1->shape[0];
 	int ncols = x1->shape[1];
@@ -126,7 +125,6 @@ void add(Array* x1, Array* x2, Array* y) {
 		}
 	}
 }
-
 void sub(Array* x1, Array* x2, Array* y) {	
 	int nrows = x1->shape[0];
 	int ncols = x1->shape[1];
@@ -138,7 +136,6 @@ void sub(Array* x1, Array* x2, Array* y) {
 		}
 	}
 }
-
 void mul(Array* x1, Array* x2, Array* y) {	
 	int nrows = x1->shape[0];
 	int ncols = x1->shape[1];
@@ -150,7 +147,6 @@ void mul(Array* x1, Array* x2, Array* y) {
 		}
 	}
 }
-
 void truediv(Array* x1, Array* x2, Array* y) {
 	int nrows = x1->shape[0];
 	int ncols = x1->shape[1];
@@ -162,7 +158,6 @@ void truediv(Array* x1, Array* x2, Array* y) {
 		}
 	}
 }
-
 void pow_(Array* x, float p, Array* y) {
 	int nrows = x->shape[0];
 	int ncols = x->shape[1];
@@ -174,7 +169,6 @@ void pow_(Array* x, float p, Array* y) {
 		}
 	}
 }
-
 void log_(Array* x, Array* y) {
 	int nrows = x->shape[0];
 	int ncols = x->shape[1];
@@ -186,7 +180,6 @@ void log_(Array* x, Array* y) {
 		}
 	}
 }
-
 void sum(Array* x, Array* y) {	
 	int nrows = x->shape[0];
 	int ncols = x->shape[1];
@@ -199,7 +192,6 @@ void sum(Array* x, Array* y) {
 		}
 	}
 }
-
 void dot(Array* x1, Array* x2, Array* y) {
 	Array prod;
 	malloc_array(&prod, x1->shape[0], x1->shape[1]);
@@ -207,7 +199,6 @@ void dot(Array* x1, Array* x2, Array* y) {
 	sum(&prod, y);
 	free_array(&prod);
 }
-
 void matmul(Array* x1, Array* x2, Array* y) {
 	int nrows = x1->shape[0];
 	int ncols = x1->shape[1];
@@ -229,7 +220,6 @@ void matmul(Array* x1, Array* x2, Array* y) {
 	free_array(&x2_col);
 	free_array(&dotprod);
 }
-
 void conv1d(Array* x, Array* ker, Array* y) {
 	// TODO
 }
