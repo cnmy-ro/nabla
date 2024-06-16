@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include "../cnabla/nabla.h"
-#include "../cnabla/arrays.h"
+#include "../c/nabla.h"
+#include "../c/arrays.h"
 
 
 // ---

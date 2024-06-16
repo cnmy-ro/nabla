@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-sys.path.append("../pynabla")
+sys.path.append("../python")
 import nabla
 from nabla import Tensor
 from utils import AdamOptimizer, zero_grad
