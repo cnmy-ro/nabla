@@ -11,8 +11,8 @@ void test_arrays(){
 	malloc_array(&x2, 3, 1);
 	malloc_array(&y, 3, 1);
 	
-	init_array_value(&x1, 7);
-	init_array_value(&x2, 3);
+	init_array_full(&x1, 7);
+	init_array_full(&x2, 3);
 	
 	mul(&x1, &x2, &y);
 	print_array(&y);
@@ -45,8 +45,8 @@ void test_nabla(){
 	malloc_tensor(&x3, 3, 1, true);
 	malloc_tensor(&y, 1, 1, true);
 	
-	init_tensor_value(&x1, 2);	
-	init_tensor_value(&x2, 3);
+	init_tensor_full(&x1, 2);	
+	init_tensor_full(&x2, 3);
 	mul_fx(&x1, &x2, &x3);
 	sum_fx(&x3, &y);
 	// printf("%s \n", "-");
@@ -62,7 +62,7 @@ void test_nabla(){
 	// printf("---2");
 	malloc_array(&init_grad, 1, 1);
 	// printf("---1");
-	init_array_value(&init_grad, 1);
+	init_array_full(&init_grad, 1);
 	// printf("--0");
 	backward(&y, &init_grad);
 	print_array(&(x3.grad));

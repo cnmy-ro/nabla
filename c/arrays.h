@@ -54,7 +54,7 @@ void print_array(Array* x) {
 // ---
 // Initialization routines
 
-void init_array_value(Array* x, float fill_value) {
+void init_array_full(Array* x, float fill_value) {
 	int nrows = x->shape[0];
 	int ncols = x->shape[1];
 	for (int i=0; i<nrows; i++) {
@@ -183,7 +183,7 @@ void log_(Array* x, Array* y) {
 void sum(Array* x, Array* y) {	
 	int nrows = x->shape[0];
 	int ncols = x->shape[1];
-	init_array_value(y, 0);
+	init_array_full(y, 0);
 	int idx;
 	for (int i=0; i<nrows; i++) {
 		for (int j=0; j<ncols; j++)	{

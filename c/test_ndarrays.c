@@ -4,9 +4,11 @@
 
 void test_ndarrays(){
 
-	size_t ndims = 2;
-	size_t shape[2] = {3,4};
-	NDArray x = fill(ndims, shape, 1);
+	int ndims = 2;
+	int shape[2] = {3,4};
+	NDArray x;
+	malloc_array(&x, ndims, shape);
+	init_array_full(&x, 1.0);
 
 	print_array(&x);
 	free_array(&x);
