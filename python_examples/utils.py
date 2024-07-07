@@ -18,3 +18,11 @@ class AdamOptimizer:
             param.data = param.data - self.lr * m_hat / np.sqrt(v_hat + 1e-8)
             self.t += 1
         return model
+
+
+def zero_grad(model):
+    for param in model.params.values():
+        param.grad = np.zeros_like(param.grad)
+        param.op = None
+        param.parents = None
+    return model
