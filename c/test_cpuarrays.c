@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include "ndarrays.h"
+#include "cpuarrays.h"
 
 void test_ndarrays(){
 

@@ -11,4 +11,6 @@ Minimal implementation of reverse-mode automatic differentiation.
 	- `python/nabla.py`: Thin autodiff wrapper over Numpy with PyTorch-like API
 	- `python_examples`: Toy examples built using this module
 - C version:
-	- `c/arrays.h` and `c/nabla.h`: Array library with autodiff capability for C
+	- `c/cpuarrays.h` : Low-level array library for CPU
+	- `c/nabla.h`: Autodiff library wrapping `cpuarrays`
+	- `c_examples`: Toy examples built using this library
