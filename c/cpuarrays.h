@@ -62,7 +62,7 @@ void print_array(NDArray* x) {
 
 
 // ---
-// Initialization routines
+// Initialization operators
 
 void init_array_full(NDArray* x, float fill_value) {
 	for (int idx=0; idx<x->size; idx++)
@@ -110,19 +110,10 @@ void flatten(NDArray* x, NDArray* y) {
 void reshape(NDArray* x, NDArray* y, int* shape) {
 }
 
-
 // Joining
 void stack(NDArray* xs, NDArray* y, int dim) {
 }
 void cat(NDArray* xs, NDArray* y, int dim) {
-}
-
-// Reduction
-void sum(NDArray* x, NDArray* y, int* dims) {
-}
-void mean(NDArray* x, NDArray* y, int* dims) {
-}
-void prod(NDArray* x, NDArray* y, int* dims) {
 }
 
 
@@ -152,14 +143,20 @@ void truediv(NDArray* x1, NDArray* x2, NDArray* y) {
 	for (int idx=0; idx<x1->size; idx++)
 		*(y->arr + idx) = *(x1->arr + idx) / *(x2->arr + idx);
 }
-void pow1(NDArray* x, float p, NDArray* y) {
-	for (int idx=0; idx<x->size; idx++)
-		*(y->arr + idx) = pow(*(x->arr + idx), p);
-}
-void pow2(NDArray* x1, NDArray* x2, NDArray* y) {
+void pow_(NDArray* x1, NDArray* x2, NDArray* y) {
 	for (int idx=0; idx<x1->size; idx++)
 		*(y->arr + idx) = pow(*(x1->arr + idx), *(x2->arr + idx));
 }
+
+// Shape-altering unary / reduction
+void sum(NDArray* x, NDArray* y, int* dims) {
+}
+void mean(NDArray* x, NDArray* y, int* dims) {
+}
+void prod(NDArray* x, NDArray* y, int* dims) {
+}
+
+// Shape-altering binary
 void vecdot(NDArray* x1, NDArray* x2, NDArray* y) {
 	// TODO
 }
@@ -172,5 +169,6 @@ void conv1d(NDArray* x, NDArray* k, NDArray* y) {
 void conv2d(NDArray* x, NDArray* k, NDArray* y) {
 	// TODO
 }
+
 
 #endif /* CPUARRAYS_H */
