@@ -1,6 +1,6 @@
 __pycache__
 python_examples/outputs
-cnabla/test
+c/test
 c_examples/tiny_ddpm
 
 .vscode
