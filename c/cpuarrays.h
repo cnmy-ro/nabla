@@ -107,17 +107,34 @@ void init_array_randint(NDArray* x, float start, float end) {
 
 // ---
 // Shape operators
+/* Note: The output arrays are malloc'd inside these functions. */	
 
 // Indexing / slicing
 void slice(NDArray* x, NDArray* y, int dim, int idx_along_dim) {
 	/*
-	Slices the array like:  array[:,idx_along_dim,:,:] where dim=1 and the array is 4D
+	Numpy equivalent -- array[:,idx_along_dim,:,:] where the array is 4D amd dim=1
 	*/
+
+	// Determine slice
 	int dim_len = *(x->shape + dim);
 	int dim_stride_int = (int)(*(x->stride + dim) / sizeof(float));
 	int seq_idx_start = idx_along_dim * dim_stride_int;
 	int seq_idx_end = seq_idx_start + dim_len*dim_stride_int;
 
+	// Malloc output array
+	int yndims = x->ndims - 1;
+	int* yshape =  malloc(yndims * sizeof(int));	
+	int yd = 0;
+	for (int xd=0; xd<x->ndims; xd++) {
+		if (xd == dim)
+			continue;
+		*(yshape + yd) = *(x->shape + xd);
+		yd++;
+	}
+	malloc_array(y, yndims, yshape);
+	free(yshape);
+
+	// Copy values into output array
 	int yidx = 0;
 	for (int xidx=seq_idx_start; xidx<seq_idx_end; xidx+=dim_stride_int) {
 		*(y->arr + yidx) = *(x->arr + xidx);
@@ -126,11 +143,9 @@ void slice(NDArray* x, NDArray* y, int dim, int idx_along_dim) {
 }
 
 // Mutation
-void squeeze(NDArray* x, NDArray* y) {
-	/*
-	The arg 'y' is malloc'd here in this function.
-	*/	
+void squeeze(NDArray* x, NDArray* y) {	
 
+	// Determine squeezed array's ndims and shape
 	int* squeezed_dims =  malloc(x->ndims * sizeof(int));
 	int squeezed_ndims = 0;
 	for (int d=0; d<x->ndims; d++) {
@@ -139,13 +154,14 @@ void squeeze(NDArray* x, NDArray* y) {
 			squeezed_ndims += 1;
 		}
 	}
-	printf("%d", squeezed_ndims);
 	int* squeezed_shape = malloc(squeezed_ndims * sizeof(int));
 	int xdim;
 	for (int yd=0; yd<squeezed_ndims; yd++) {
 		xdim = *(squeezed_dims + yd);
 		*(squeezed_shape + yd) = *(x->shape + xdim);
 	}
+
+	// Malloc output array and copy values
 	malloc_array(y, squeezed_ndims, squeezed_shape);
 	copy_array(x, y);
 	free(squeezed_shape);

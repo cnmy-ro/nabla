@@ -2,28 +2,26 @@
 #include <stdbool.h>
 #include "cpuarrays.h"
 
-// void test_slice(){
-// 	int ndims = 2;
-// 	int xshape[2] = {3,4};	
-// 	NDArray x;
-// 	malloc_array(&x, 2, xshape);
-// 	init_array_linspace(&x, 0, 12, 12);
-// 	// print_array(&x);
-// 	// printf("%d %d", (x.stride), x.stride[1]);
+void test_slice(){
+	int ndims = 2;
+	int xshape[2] = {3,4};	
+	NDArray x;
+	malloc_array(&x, 2, xshape);
+	init_array_linspace(&x, 0, 12, 12);
+	// print_array(&x);
+	// printf("%zu %zu \n", *(x.stride), *(x.stride+1));
 
-// 	NDArray y;
-// 	int yshape[1] = {4};
-// 	malloc_array(&y, 1, yshape);
-// 	slice(&x, &y, 0, 0);
-// 	printf("%d %zu \n", (y.numel), *(y.stride));
-// 	print_array(&y);
+	NDArray y;
+	slice(&x, &y, 1, 0);
+	printf("%d %zu \n", (y.numel), *(y.stride));
+	print_array(&y);
 	
-// 	// // print_array(&x);
-// 	// printf("%zu %zu", *(x.stride), *(x.stride+1));
+	// // print_array(&x);
+	// printf("%zu %zu", *(x.stride), *(x.stride+1));
 
-// 	free_array(&x);
-// 	free_array(&y);
-// }
+	free_array(&x);
+	free_array(&y);
+}
 
 void test_squeeze(){
 
@@ -42,6 +40,6 @@ void test_squeeze(){
 }
 
 void main() {
-	// test_slice();
-	test_squeeze();
+	test_slice();
+	// test_squeeze();
 }
