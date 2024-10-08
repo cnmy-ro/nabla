@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import List
 import numpy as np
+import graphviz
+import matplotlib.pyplot as plt
 
 _grad_enabled = True  # Global switch
+_tensor_namespace = [] # Global list of all tensor names
 
 
 # ---
@@ -12,9 +15,23 @@ def enable_grad(flag):
     global _grad_enabled
     _grad_enabled = flag
 
-def show_dag(tensor):
-    # TODO: trace the history of the given tensor and show as DAG
-    pass
+def show_dag(tensor, view_img=True):
+    graph = graphviz.Digraph(f"DAG_TensorID={tensor.name}", format='png')
+    def traverse_dag(tnsr):  # Build graph with recursive depth-first tree traversal
+        if tnsr.parents is not None:
+            for i in range(len(tnsr.parents)):
+                from_node = f"{(tnsr.parents[i].op.__class__.__name__)} {tnsr.parents[i].name}"
+                to_node = f"{tnsr.op.__class__.__name__} {tnsr.name}"
+                graph.edge(from_node, to_node, tnsr.parents[i].name)
+                traverse_dag(tnsr.parents[i])
+    traverse_dag(tensor)    
+    if view_img:
+        graph.render(directory='/tmp', view=False)
+        img = plt.imread(f"/tmp/DAG_TensorID={tensor.name}.gv.png")  
+        plt.imshow(img); plt.axis('off'); plt.show()
+    else:
+        print(graph.source)
+
 
 # ---
 # Core classes
@@ -22,6 +39,7 @@ def show_dag(tensor):
 class Tensor:
     
     def __init__(self, data: np.ndarray, requires_grad: bool = False):
+        self.name = _generate_tensor_name()
         self.data = data
         self.requires_grad = requires_grad
         self.grad = np.zeros_like(data)  # d_root / d_self
@@ -242,3 +260,15 @@ def randn(shape, requires_grad=False):
 
 def randint(start, end, shape, requires_grad=False):
     return Tensor(np.random.randint(start, end, shape), requires_grad=requires_grad)
+
+
+# ---
+# Internal utils
+
+def _generate_tensor_name():
+    if len(_tensor_namespace) == 0:
+        tensor_name = '0'
+    else:
+        tensor_name = str(int(_tensor_namespace[-1]) + 1)
+    _tensor_namespace.append(tensor_name)
+    return tensor_name

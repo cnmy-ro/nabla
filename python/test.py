@@ -32,6 +32,16 @@ def test_tensoroverwrite():
 	print(a.grad)
 	print(b.grad)
 
+def test_dagviz():
+	a = Tensor(np.ones((4,1))*3, requires_grad=True)
+	b = Tensor(np.ones((4,1)), requires_grad=True)
+	c = Tensor(np.array([2]), requires_grad=True)
+	d = a * b
+	e = d.sum()	
+	f = e * c
+	nabla.show_dag(f)
+
 
 # test_dot()
-test_tensoroverwrite()
+# test_tensoroverwrite()
+test_dagviz()
