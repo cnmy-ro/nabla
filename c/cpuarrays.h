@@ -62,6 +62,7 @@ void free_array(NDArray* x) {
 	x->ndims = 0;
 }
 void copy_array(NDArray* x, NDArray* y) {
+	malloc_array(y, x->ndims, x->shape);
 	for (int idx=0; idx<x->numel; idx++)
 		*(y->arr + idx) = *(x->arr + idx);
 }
@@ -97,10 +98,8 @@ void init_array_randn(NDArray* x) {
 }
 void init_array_randint(NDArray* x, float start, float end) {
 	srand(time(NULL));
-	float randint;
 	for (int idx=0; idx<x->numel; idx++) {
-		randint = (rand() / (float)RAND_MAX) * (end - start) + start;
-		*(x->arr + idx) = rand() / (float)RAND_MAX;
+		*(x->arr + idx) = (rand() / (float)RAND_MAX) * (end - start) + start;
 	}
 }
 
@@ -143,7 +142,31 @@ void slice(NDArray* x, NDArray* y, int dim, int idx_along_dim) {
 }
 
 // Mutation
-void squeeze(NDArray* x, NDArray* y) {	
+// void squeeze(NDArray* x, NDArray* y) {	
+
+// 	// Determine squeezed array's ndims and shape
+// 	int* squeezed_dims =  malloc(x->ndims * sizeof(int));
+// 	int squeezed_ndims = 0;
+// 	for (int d=0; d<x->ndims; d++) {
+// 		if (*(x->shape + d) > 1) {
+// 			*(squeezed_dims + squeezed_ndims) = d;
+// 			squeezed_ndims += 1;
+// 		}
+// 	}
+// 	int* squeezed_shape = malloc(squeezed_ndims * sizeof(int));
+// 	int xdim;
+// 	for (int yd=0; yd<squeezed_ndims; yd++) {
+// 		xdim = *(squeezed_dims + yd);
+// 		*(squeezed_shape + yd) = *(x->shape + xdim);
+// 	}
+
+// 	// Malloc output array and copy values
+// 	malloc_array(y, squeezed_ndims, squeezed_shape);
+// 	copy_array(x, y);
+// 	free(squeezed_shape);
+// 	free(squeezed_dims);
+// }
+void squeeze(NDArray* x) {	
 
 	// Determine squeezed array's ndims and shape
 	int* squeezed_dims =  malloc(x->ndims * sizeof(int));
@@ -161,19 +184,26 @@ void squeeze(NDArray* x, NDArray* y) {
 		*(squeezed_shape + yd) = *(x->shape + xdim);
 	}
 
-	// Malloc output array and copy values
-	malloc_array(y, squeezed_ndims, squeezed_shape);
-	copy_array(x, y);
-	free(squeezed_shape);
-	free(squeezed_dims);
+	// Update array metadata
+	free(x->shape);
+	free(x->stride);	
+	x->ndims = squeezed_ndims;
+	x->shape = malloc(squeezed_ndims * sizeof(int));
+	for (int d=0; d<squeezed_ndims; d++)
+		*(x->shape + d) = *(squeezed_shape + d);
+	x->stride = malloc(squeezed_ndims * sizeof(size_t));
+	*(x->stride + squeezed_ndims - 1) = sizeof(float);
+	for (int d=squeezed_ndims-2; d>=0; d--) {
+		*(x->stride + d) = *(x->stride + d + 1) * (*(x->shape + d + 1));
+	}
 }
-void unsqueeze(NDArray* x, NDArray* y, int dim) {
+void unsqueeze(NDArray* x, int dim) {
 }
-void permute(NDArray* x, NDArray* y, int* dims) {
+void permute(NDArray* x, int* dims) {
 }
-void flatten(NDArray* x, NDArray* y) {
+void flatten(NDArray* x) {
 }
-void reshape(NDArray* x, NDArray* y, int* shape) {
+void reshape(NDArray* x, int* shape) {
 }
 
 // Joining
