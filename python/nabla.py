@@ -4,7 +4,7 @@ import numpy as np
 import graphviz
 import matplotlib.pyplot as plt
 
-_grad_enabled = True  # Global switch
+_grad_enabled = True   # Global switch
 _tensor_namespace = [] # Global list of all tensor names
 
 
@@ -18,12 +18,16 @@ def enable_grad(flag):
 def show_dag(tensor, view_img=True):
     graph = graphviz.Digraph(f"DAG_TensorID={tensor.name}", format='png')
     def traverse_dag(tnsr):  # Build graph with recursive depth-first tree traversal
-        if tnsr.parents is not None:
-            for i in range(len(tnsr.parents)):
-                from_node = f"{(tnsr.parents[i].op.__class__.__name__)} {tnsr.parents[i].name}"
+        if isinstance(tnsr.op, Stack) or isinstance(tnsr.op, Cat): 
+            parents = tnsr.parents[0]
+        else:
+            parents = tnsr.parents
+        if parents is not None:
+            for i in range(len(parents)):
+                from_node = f"{(parents[i].op.__class__.__name__)} {parents[i].name}"
                 to_node = f"{tnsr.op.__class__.__name__} {tnsr.name}"
-                graph.edge(from_node, to_node, tnsr.parents[i].name)
-                traverse_dag(tnsr.parents[i])
+                graph.edge(from_node, to_node, parents[i].name)
+                traverse_dag(parents[i])
     traverse_dag(tensor)    
     if view_img:
         graph.render(directory='/tmp', view=False)
@@ -48,7 +52,7 @@ class Tensor:
         self.shape = data.shape
     
     def backward(self, grad: np.ndarray = np.array([[1.]])): # Backprop function
-        if not _grad_enabled: raise RuntimeError("Called backward() but gradient computation is disabled.")
+        if not _grad_enabled: raise RuntimeError("Called backward(), but gradient computation is disabled.")
         self._accumulate_grad(grad)
         if self.op is not None:
             if isinstance(self.op, Stack) or isinstance(self.op, Cat): 
@@ -74,13 +78,13 @@ class Tensor:
 
     def __str__(self):            return self.data.__str__()
     def __repr__(self):           return self.data.__repr__()
+    def __getitem__(self, idx):   return Slice(idx)(self)
     def __neg__(self):            return Neg()(self)
     def __add__(self, other):     return Add()(self, other)
     def __sub__(self, other):     return Sub()(self, other)
     def __mul__(self, other):     return Mul()(self, other)
     def __truediv__(self, other): return Div()(self, other)
     def __pow__(self, other):     return Pow()(self, other)
-    def slice(self, dims, ranges): return Slice()(self, dims, ranges)
     def dot(self, other):         return Dot()(self, other)
     def sum(self):                return Sum()(self)
     def mean(self):               return Sum()(self) / Tensor(np.prod(np.array(self.shape)))
@@ -89,10 +93,13 @@ class Tensor:
     def leaky_relu(self, alpha):  return LeakyReLU(alpha)(self)
     def sigmoid(self):            return Sigmoid()(self)
     def tanh(self):               return Tanh()(self)
-    def reshape(self, shape):     return Reshape()(self, shape)
-    def flatten(self):            return Reshape()(self, (np.prod(np.array(self.shape)),))
-    def squeeze(self):            return Reshape()(self, tuple([s for s in self.shape if s>0]))
-    def unsqueeze(self, dim):     return Reshape()(self, tuple(list(self.shape).insert(dim, 1)))
+    def reshape(self, shape):     return Reshape(shape)(self)
+    def flatten(self):            return Reshape((np.prod(np.array(self.shape)),))(self)
+    def squeeze(self):            return Reshape(tuple([s for s in self.shape if s>1]))(self)
+    def unsqueeze(self, dim):     
+        shape = list(self.shape)
+        shape.insert(dim, 1)
+        return Reshape(tuple(shape))(self)
     def permute(self, dim_ord):   return Permute()(self, dim_ord)
     def T(self):                  return Permute()(self, (1,0))
 
@@ -254,26 +261,16 @@ class Conv2D(Operator):
 # Shape transformation ops
 
 class Slice(Operator):
-    # TODO: Make API fully numpy-like
-    def __init__(self, dims, ranges):
-        self.dims = dims
-        self.ranges = ranges
-        nplike_slice_idx = []
-        for i in range(len(x.shape)):
-            if i in self.dims:
-                range = self.ranges[self.dims.index(i)]
-                nplike_slice_idx.append(f"{range[0]}:{range[1]}")
-            else:
-                nplike_slice_idx.append(":")
-        self.nplike_slice_idx = ','.join(nplike_slice_idx)
-    def fx(self, x): return eval(f"x[{self.nplike_slice_idx}]")
+    def __init__(self, idx): self.idx = idx
+    def fx(self, x):         return x.data[self.idx]
     def vjp(self, y, x):
         x_grad = np.zeros_like(x.data)
-        eval(f"x_grad[{self.nplike_slice_idx}] = y.grad")
+        x_grad[self.idx] = y.grad
         return [x_grad]
 
 class Reshape(Operator):
-    def fx(self, x, shape): return x.data.reshape(shape)
+    def __init__(self, shape): self.shape = shape
+    def fx(self, x):           return x.data.reshape(self.shape)
     def vjp(self, y, x):
         x_grad = y.grad.reshape(x.shape)
         return [x_grad]
@@ -289,12 +286,11 @@ class Stack(Operator):
     def __init__(self, dim):
         self.dim = dim
         self.x_dimsize_list = None
-    def fx(self, x_list): 
-        self.x_dimsize_list = [x.shape[self.dim] for x in x_list]
-        return np.stack(x_list, axis=self.dim)
-    def vjp(self, y, x_list):
-        x_grad_list = np.array_split(y.grad, self.x_dimsize_list[:-1], axis=self.dim)
-        return [x_grad.squeeze() for x_grad in x_grad_list]
+    def fx(self, x_list):
+        return np.stack([x.data for x in x_list], axis=self.dim)
+    def vjp(self, y, *x_list):
+        x_grad_list = np.split(y.grad, len(x_list), axis=self.dim)
+        return [x_grad.squeeze(axis=self.dim) for x_grad in x_grad_list]
 
 class Cat(Operator):
     def __init__(self, dim):
@@ -302,8 +298,8 @@ class Cat(Operator):
         self.x_dimsize_list = None
     def fx(self, x_list): 
         self.x_dimsize_list = [x.shape[self.dim] for x in x_list]
-        return np.concatenate(x_list, axis=self.dim)
-    def vjp(self, y, x_list):
+        return np.concatenate([x.data for x in x_list], axis=self.dim)
+    def vjp(self, y, *x_list):
         x_grad_list = np.array_split(y.grad, self.x_dimsize_list[:-1], axis=self.dim)
         return x_grad_list
     
@@ -313,27 +309,17 @@ class Cat(Operator):
 
 def zeros(shape, requires_grad=False):
     return Tensor(np.zeros(shape), requires_grad=requires_grad)
-
 def ones(shape, requires_grad=False):
     return Tensor(np.ones(shape), requires_grad=requires_grad)
-
 def rand(shape, requires_grad=False):
     return Tensor(np.random.rand(size=shape), requires_grad=requires_grad)
-
 def randn(shape, requires_grad=False):
     return Tensor(np.random.normal(size=shape), requires_grad=requires_grad)
-
 def randint(start, end, shape, requires_grad=False):
     return Tensor(np.random.randint(start, end, shape), requires_grad=requires_grad)
-
-def stack(x_list, dim):
-    return Stack(dim)(x_list)
-
-def cat(x_list, dim):
-    return Cat(dim)(x_list)
-
-def repeat(x, repeats, dim):
-    return Cat(dim)([x for _ in range(repeats)])
+def stack(x_list, dim):     return Stack(dim)(x_list)
+def cat(x_list, dim):        return Cat(dim)(x_list)
+def repeat(x, repeats, dim): return Cat(dim)([x for _ in range(repeats)])
 
 # ---
 # Internal utils
