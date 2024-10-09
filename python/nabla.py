@@ -18,10 +18,8 @@ def enable_grad(flag):
 def show_dag(tensor, view_img=True):
     graph = graphviz.Digraph(f"DAG_TensorID={tensor.name}", format='png')
     def traverse_dag(tnsr):  # Build graph with recursive depth-first tree traversal
-        if isinstance(tnsr.op, Stack) or isinstance(tnsr.op, Cat): 
-            parents = tnsr.parents[0]
-        else:
-            parents = tnsr.parents
+        if isinstance(tnsr.op, Stack) or isinstance(tnsr.op, Cat): parents = tnsr.parents[0]
+        else:                                                      parents = tnsr.parents
         if parents is not None:
             for i in range(len(parents)):
                 from_node = f"{(parents[i].op.__class__.__name__)} {parents[i].name}"
@@ -35,7 +33,6 @@ def show_dag(tensor, view_img=True):
         plt.imshow(img); plt.axis('off'); plt.show()
     else:
         print(graph.source)
-
 
 # ---
 # Core classes
@@ -55,10 +52,8 @@ class Tensor:
         if not _grad_enabled: raise RuntimeError("Called backward(), but gradient computation is disabled.")
         self._accumulate_grad(grad)
         if self.op is not None:
-            if isinstance(self.op, Stack) or isinstance(self.op, Cat): 
-                parents = self.parents[0]
-            else:
-                parents = self.parents
+            if isinstance(self.op, Stack) or isinstance(self.op, Cat): parents = self.parents[0]
+            else:                                                      parents = self.parents
             parent_vjps = self.op.vjp(self, *parents)
             for i in range(len(parents)):
                 if parents[i].requires_grad:
@@ -96,10 +91,7 @@ class Tensor:
     def reshape(self, shape):     return Reshape(shape)(self)
     def flatten(self):            return Reshape((np.prod(np.array(self.shape)),))(self)
     def squeeze(self):            return Reshape(tuple([s for s in self.shape if s>1]))(self)
-    def unsqueeze(self, dim):     
-        shape = list(self.shape)
-        shape.insert(dim, 1)
-        return Reshape(tuple(shape))(self)
+    def unsqueeze(self, dim):     shape = list(self.shape); shape.insert(dim, 1); return Reshape(tuple(shape))(self)
     def permute(self, dim_ord):   return Permute()(self, dim_ord)
     def T(self):                  return Permute()(self, (1,0))
 
@@ -134,9 +126,9 @@ class Operator(ABC):
         
         Args:
             y: result tensor of this op (i.e. of the fx function)
-            *args: argument tensors to this op
+            *args: argument tensors to this op, e.g. [x1, x2]
         Returns:
-            grads of this op's argument tensors
+            grads of this op's argument tensors, e.g. [x1_grad, x2_grad]
         """
         ...
 
@@ -145,81 +137,55 @@ class Operator(ABC):
 
 class Neg(Operator):
     def fx(self, x):     return -x.data
-    def vjp(self, y, x):
-        x_grad = y.grad * (-1.)
-        return [x_grad]
+    def vjp(self, y, x): return [y.grad * (-1.)]
 
 class Log(Operator):
     def fx(self, x):     return np.log(x.data)
-    def vjp(self, y, x):
-        x_grad = y.grad * (1. / (x.data + 1e-8))
-        return [x_grad]
+    def vjp(self, y, x): return [y.grad * (1. / (x.data + 1e-8))]
 
 class ReLU(Operator):
-    def fx(self, x):     return np.maximum(x.data, np.zeros_like(x.data))
-    def vjp(self, y, x): 
-        x_grad = y.grad * (x.data > 0.).astype(float)
-        return [x_grad]
+    def fx(self, x):     return x.data * (x.data > 0)
+    def vjp(self, y, x): return [y.grad * (x.data > 0.).astype(float)]
 
 class LeakyReLU(Operator):
     def __init__(self, alpha=0.2): self.alpha = alpha
-    def fx(self, x):
-        y = x.data.copy()
-        y[x.data < 0] *= self.alpha
-        return y
-    def vjp(self, y, x):
-        x_grad = y.grad
-        x_grad[x.data < 0] *= self.alpha
-        return [x_grad]
+    def fx(self, x):               return x.data * ((x.data > 0) + self.alpha * (x.data < 0))
+    def vjp(self, y, x):           return [y.grad * ((x.data > 0) + self.alpha * (x.data < 0))]
 
 class Sigmoid(Operator):
     def _sigma(self, x): return 1. / (1. + np.exp(-x))
     def fx(self, x):     return self._sigma(x.data)
-    def vjp(self, y, x):
-        x_grad = y.grad * self._sigma(x.data) * (1. - self._sigma(x.data))
-        return [x_grad]
+    def vjp(self, y, x): return [y.grad * self._sigma(x.data) * (1. - self._sigma(x.data))]
 
 class Tanh(Operator):
     def fx(self, x):     return np.tanh(x.data)
-    def vjp(self, y, x): 
-        x_grad = y.grad * (1. - np.tanh(x.data)**2)
-        return [x_grad]
+    def vjp(self, y, x): return [y.grad * (1. - np.tanh(x.data)**2)]
 
 # ---
 # Point-wise binary ops
 
 class Add(Operator):
-    def fx(self, x1, x2): return x1.data + x2.data
-    def vjp(self, y, x1, x2):
-        x1_grad, x2_grad = y.grad, y.grad
-        return [x1_grad, x2_grad]
+    def fx(self, x1, x2):     return x1.data + x2.data
+    def vjp(self, y, x1, x2): return [y.grad, y.grad]
 
 class Sub(Operator):
-    def fx(self, x1, x2): return x1.data - x2.data
-    def vjp(self, y, x1, x2):
-        x1_grad, x2_grad = y.grad, -y.grad
-        return [x1_grad, x2_grad]
+    def fx(self, x1, x2):     return x1.data - x2.data
+    def vjp(self, y, x1, x2): return [y.grad, -y.grad]
 
 class Mul(Operator):
-    def fx(self, x1, x2): return x1.data * x2.data
-    def vjp(self, y, x1, x2):
-        x1_grad, x2_grad = y.grad * x2.data, y.grad * x1.data
-        return [x1_grad, x2_grad]
+    def fx(self, x1, x2):     return x1.data * x2.data
+    def vjp(self, y, x1, x2): return [y.grad * x2.data, y.grad * x1.data]
 
 class Div(Operator):
-    def fx(self, x1, x2): return x1.data / x2.data
-    def vjp(self, y, x1, x2): 
-        x1_grad, x2_grad = y.grad * (1. / x2.data), y.grad * x1.data * (-1. / (x2.data**2))
-        return [x1_grad, x2_grad]
+    def fx(self, x1, x2):     return x1.data / x2.data
+    def vjp(self, y, x1, x2): return [y.grad * (1. / x2.data), y.grad * x1.data * (-1. / (x2.data**2))]
 
 class Pow(Operator):
-    def fx(self, x1, x2): return x1.data**x2.data
+    def fx(self, x1, x2):     return x1.data**x2.data
     def vjp(self, y, x1, x2):
         x1_grad = y.grad * x2.data * x1.data**(x2.data - 1.)
-        if x2.requires_grad:
-            x2_grad = y.grad * np.log(x1.data) * x1.data**x2.data
-        else:
-            x2_grad = np.zeros_like(x2.data)
+        if x2.requires_grad: x2_grad = y.grad * np.log(x1.data) * x1.data**x2.data
+        else:                x2_grad = np.zeros_like(x2.data)
         return [x1_grad, x2_grad]
 
 # ---
@@ -228,18 +194,14 @@ class Pow(Operator):
 class Sum(Operator):
     # TODO: sum along specified dim
     def fx(self, x):     return x.data.sum(keepdims=True)
-    def vjp(self, y, x):
-        x_grad = np.full(x.shape, y.grad * 1.)
-        return [x_grad]
+    def vjp(self, y, x): return [np.full(x.shape, y.grad * 1.)]
 
 # ---
 # Shape-altering binary ops
 
 class Dot(Operator):
-    def fx(self, x1, x2): return x1.data @ x2.data
-    def vjp(self, y, x1, x2): 
-        x1_grad, x2_grad = y.grad @ x2.data.T, x1.data.T @ y.grad
-        return [x1_grad, x2_grad]
+    def fx(self, x1, x2):     return x1.data @ x2.data
+    def vjp(self, y, x1, x2): return [y.grad @ x2.data.T, x1.data.T @ y.grad]
 
 class Conv1D(Operator):
     def fx(self, x1, x2):
@@ -271,22 +233,17 @@ class Slice(Operator):
 class Reshape(Operator):
     def __init__(self, shape): self.shape = shape
     def fx(self, x):           return x.data.reshape(self.shape)
-    def vjp(self, y, x):
-        x_grad = y.grad.reshape(x.shape)
-        return [x_grad]
+    def vjp(self, y, x):       return [y.grad.reshape(x.shape)]
     
 class Permute(Operator):
     def __init__(self, dim_ord): self.dim_ord = dim_ord
     def fx(self, x):             return x.data.transpose(self.dim_ord)
-    def vjp(self, y, x):
-        x_grad = y.grad.transpose(self.dim_ord)
-        return [x_grad]
+    def vjp(self, y, x):         return [y.grad.transpose(self.dim_ord)]
     
 class Stack(Operator):
     def __init__(self, dim):
         self.dim = dim
-        self.x_dimsize_list = None
-    def fx(self, x_list):
+    def fx(self, x_list): 
         return np.stack([x.data for x in x_list], axis=self.dim)
     def vjp(self, y, *x_list):
         x_grad_list = np.split(y.grad, len(x_list), axis=self.dim)
@@ -299,10 +256,10 @@ class Cat(Operator):
     def fx(self, x_list): 
         self.x_dimsize_list = [x.shape[self.dim] for x in x_list]
         return np.concatenate([x.data for x in x_list], axis=self.dim)
-    def vjp(self, y, *x_list):
-        x_grad_list = np.array_split(y.grad, self.x_dimsize_list[:-1], axis=self.dim)
+    def vjp(self, y, *x_list): 
+        x_grad_list = np.split(y.grad, len(x_list), axis=self.dim)
         return x_grad_list
-    
+
 
 # ---
 # Convenience functions
@@ -317,7 +274,7 @@ def randn(shape, requires_grad=False):
     return Tensor(np.random.normal(size=shape), requires_grad=requires_grad)
 def randint(start, end, shape, requires_grad=False):
     return Tensor(np.random.randint(start, end, shape), requires_grad=requires_grad)
-def stack(x_list, dim):     return Stack(dim)(x_list)
+def stack(x_list, dim):      return Stack(dim)(x_list)
 def cat(x_list, dim):        return Cat(dim)(x_list)
 def repeat(x, repeats, dim): return Cat(dim)([x for _ in range(repeats)])
 
@@ -325,9 +282,7 @@ def repeat(x, repeats, dim): return Cat(dim)([x for _ in range(repeats)])
 # Internal utils
 
 def _generate_tensor_name():
-    if len(_tensor_namespace) == 0:
-        tensor_name = '0'
-    else:
-        tensor_name = str(int(_tensor_namespace[-1]) + 1)
+    if len(_tensor_namespace) == 0: tensor_name = '0'
+    else:                           tensor_name = str(int(_tensor_namespace[-1]) + 1)
     _tensor_namespace.append(tensor_name)
     return tensor_name
