@@ -29,7 +29,7 @@ def show_dag(tensor, view_img=True):
     traverse_dag(tensor)    
     if view_img:
         graph.render(directory='/tmp', view=False)
-        img = plt.imread(f"/tmp/DAG_TensorID={tensor.name}.gv.png")  
+        img = plt.imread(f"/tmp/nabla_dag_{tensor.name}.gv.png")  
         plt.imshow(img); plt.axis('off'); plt.show()
     else:
         print(graph.source)
