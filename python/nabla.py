@@ -58,10 +58,7 @@ class Tensor:
             for i in range(len(parents)):
                 if parents[i].requires_grad:
                     parent_grad = parent_vjps[i]
-                    parents[i].backward(parent_grad)  # Recursive depth-first tree traversal
-
-    def detach(self):
-        self.op = self.parents = None
+                    parents[i].backward(parent_grad)  # Recursive depth-first tree traversal    
 
     def _accumulate_grad(self, grad):
         bc_dims = []  # If this tensor had size=1 in certain dims and was broadcast during forward pass, its grad will have size>1 in those dims
@@ -94,6 +91,7 @@ class Tensor:
     def unsqueeze(self, dim):     shape = list(self.shape); shape.insert(dim, 1); return Reshape(tuple(shape))(self)
     def permute(self, dim_ord):   return Permute()(self, dim_ord)
     def T(self):                  return Permute()(self, (1,0))
+    def detach(self):             self.op = self.parents = None
 
 class Operator(ABC):
     
@@ -260,7 +258,6 @@ class Cat(Operator):
         x_grad_list = np.split(y.grad, len(x_list), axis=self.dim)
         return x_grad_list
 
-
 # ---
 # Convenience functions
 
@@ -282,6 +279,7 @@ def repeat(x, repeats, dim): return Cat(dim)([x for _ in range(repeats)])
 # Internal utils
 
 def _generate_tensor_name():
+    global _tensor_namespace
     if len(_tensor_namespace) == 0: tensor_name = '0'
     else:                           tensor_name = str(int(_tensor_namespace[-1]) + 1)
     _tensor_namespace.append(tensor_name)

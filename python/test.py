@@ -80,5 +80,5 @@ def test_shapeops():
 
 # test_dot()
 # test_tensoroverwrite()
-# test_dagviz()
-test_shapeops()
+test_dagviz()
+# test_shapeops()
