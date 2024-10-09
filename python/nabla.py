@@ -131,6 +131,8 @@ class Operator(ABC):
         ...
 
 # ---
+# Operator classes
+
 # Point-wise unary ops
 
 class Neg(Operator):
@@ -159,7 +161,6 @@ class Tanh(Operator):
     def fx(self, x):     return np.tanh(x.data)
     def vjp(self, y, x): return [y.grad * (1. - np.tanh(x.data)**2)]
 
-# ---
 # Point-wise binary ops
 
 class Add(Operator):
@@ -186,7 +187,6 @@ class Pow(Operator):
         else:                x2_grad = np.zeros_like(x2.data)
         return [x1_grad, x2_grad]
 
-# ---
 # Shape-altering unary ops
 
 class Sum(Operator):
@@ -194,7 +194,6 @@ class Sum(Operator):
     def fx(self, x):     return x.data.sum(keepdims=True)
     def vjp(self, y, x): return [np.full(x.shape, y.grad * 1.)]
 
-# ---
 # Shape-altering binary ops
 
 class Dot(Operator):
@@ -217,7 +216,6 @@ class Conv2D(Operator):
         # TODO
         pass
 
-# ---
 # Shape transformation ops
 
 class Slice(Operator):
@@ -261,19 +259,14 @@ class Cat(Operator):
 # ---
 # Convenience functions
 
-def zeros(shape, requires_grad=False):
-    return Tensor(np.zeros(shape), requires_grad=requires_grad)
-def ones(shape, requires_grad=False):
-    return Tensor(np.ones(shape), requires_grad=requires_grad)
-def rand(shape, requires_grad=False):
-    return Tensor(np.random.rand(size=shape), requires_grad=requires_grad)
-def randn(shape, requires_grad=False):
-    return Tensor(np.random.normal(size=shape), requires_grad=requires_grad)
-def randint(start, end, shape, requires_grad=False):
-    return Tensor(np.random.randint(start, end, shape), requires_grad=requires_grad)
-def stack(x_list, dim):      return Stack(dim)(x_list)
-def cat(x_list, dim):        return Cat(dim)(x_list)
-def repeat(x, repeats, dim): return Cat(dim)([x for _ in range(repeats)])
+def zeros(shape, requires_grad=False):               return Tensor(np.zeros(shape), requires_grad=requires_grad)
+def ones(shape, requires_grad=False):                return Tensor(np.ones(shape), requires_grad=requires_grad)
+def rand(shape, requires_grad=False):                return Tensor(np.random.rand(size=shape), requires_grad=requires_grad)
+def randn(shape, requires_grad=False):               return Tensor(np.random.normal(size=shape), requires_grad=requires_grad)
+def randint(start, end, shape, requires_grad=False): return Tensor(np.random.randint(start, end, shape), requires_grad=requires_grad)
+def stack(x_list, dim):                              return Stack(dim)(x_list)
+def cat(x_list, dim):                                return Cat(dim)(x_list)
+def repeat(x, repeats, dim):                         return Cat(dim)([x for _ in range(repeats)])
 
 # ---
 # Internal utils
