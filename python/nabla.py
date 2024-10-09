@@ -16,7 +16,7 @@ def enable_grad(flag):
     _grad_enabled = flag
 
 def show_dag(tensor, view_img=True):
-    graph = graphviz.Digraph(f"DAG_TensorID={tensor.name}", format='png')
+    graph = graphviz.Digraph(f"nabla_dag_{tensor.name}", format='png')
     def traverse_dag(tnsr):  # Build graph with recursive depth-first tree traversal
         if isinstance(tnsr.op, Stack) or isinstance(tnsr.op, Cat): parents = tnsr.parents[0]
         else:                                                      parents = tnsr.parents
