@@ -48,8 +48,8 @@ class Tensor:
         self.parents = None  # List [op_args]. Records the parent node(s) in the computational graph.
         self.shape = data.shape
     
-    def backward(self, grad: np.ndarray = np.array([[1.]])): # Backprop function
-        if not _grad_enabled: raise RuntimeError("Called backward(), but gradient computation is disabled.")
+    def backward(self, grad: np.ndarray = np.array([1.])): # Backprop function
+        if not _grad_enabled: raise RuntimeError("Called backward(), but gradient computation not enabled")
         self._accumulate_grad(grad)
         if self.op is not None:
             if isinstance(self.op, Stack) or isinstance(self.op, Cat): parents = self.parents[0]
@@ -78,8 +78,8 @@ class Tensor:
     def __truediv__(self, other): return Div()(self, other)
     def __pow__(self, other):     return Pow()(self, other)
     def dot(self, other):         return Dot()(self, other)
-    def sum(self):                return Sum()(self)
-    def mean(self):               return Sum()(self) / Tensor(np.prod(np.array(self.shape)))
+    def sum(self, dim=None):      return Sum(dim)(self)
+    def mean(self, dim=None):     return Sum(dim)(self) / int(np.prod(np.array(self.shape))) if dim is None else Sum(dim)(self) / int(np.prod(np.array(self.shape)[dim]))
     def log(self):                return Log()(self)
     def relu(self):               return ReLU()(self)
     def leaky_relu(self, alpha):  return LeakyReLU(alpha)(self)
@@ -190,25 +190,27 @@ class Pow(Operator):
 # Shape-altering unary ops
 
 class Sum(Operator):
-    # TODO: sum along specified dim
-    def fx(self, x):     return x.data.sum(keepdims=True)
-    def vjp(self, y, x): return [np.full(x.shape, y.grad * 1.)]
+    def __init__(self, dim=None): self.dim = tuple(dim) if isinstance(dim, list) else dim
+    def fx(self, x):              return x.data.sum().reshape((1,)) if self.dim is None else x.data.sum(axis=self.dim)
+    def vjp(self, y, x):          
+        if self.dim is None:            x_grad = np.full(x.shape, y.grad * 1.)
+        elif isinstance(self.dim, int): x_grad = np.stack([y.grad]*x.shape[self.dim], axis=self.dim)
+        elif isinstance(self.dim, tuple) or isinstance(self.dim, list):
+            x_grad = y.grad
+            for d in self.dim: x_grad = np.stack([x_grad]*x.shape[d], axis=d)
+        return x_grad
 
 class AvgPool1D(Operator):
-    def fx(self, x): 
-        # TODO
-        pass
-    def vjp(self, y, x): 
-        # TODO
-        pass
+    # TODO
+    def __init__(self, kernel_size, stride, padding): pass
+    def fx(self, x):         pass
+    def vjp(self, y, x):     pass
 
 class AvgPool2D(Operator):
-    def fx(self, x1): 
-        # TODO
-        pass
-    def vjp(self, y, x): 
-        # TODO
-        pass
+    # TODO
+    def __init__(self, kernel_size, stride, padding): pass
+    def fx(self, x):         pass
+    def vjp(self, y, x):     pass
 
 # Shape-altering binary ops
 
@@ -216,7 +218,7 @@ class Dot(Operator):
     def fx(self, x1, x2):     return x1.data @ x2.data
     def vjp(self, y, x1, x2): return [y.grad @ x2.data.T, x1.data.T @ y.grad]
 
-class Linear(Operator):  # TODO
+class Linear(Operator):  # TODO: Dot() with batch support and bias
     def fx(self, x1, x2):     pass
     def vjp(self, y, x1, x2): pass
 
@@ -238,12 +240,10 @@ class Conv1D(Operator):
         return [x_grad, kernel_grad]
 
 class Conv2D(Operator):
-    def fx(self, x1, x2): 
-        # TODO
-        pass
-    def vjp(self, y, x1, x2): 
-        # TODO
-        pass
+    # TODO
+    def __init__(self, stride=1, padding=0): pass
+    def fx(self, x, kernel):         pass
+    def vjp(self, y, x, kernel):     pass
 
 # Shape transformation ops
 

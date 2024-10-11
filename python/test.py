@@ -107,8 +107,30 @@ def test_conv():
 	print(a.grad)
 	print(b.grad)
 
+def test_dimsum():
+	print('nabla:')
+	a = Tensor(np.ones((4,3)), requires_grad=True)
+	b = a.mean(dim=[0])
+	print(b)
+	c = b.sum()
+	print(c)
+	c.backward()
+	print(a.grad)
+
+	print()
+
+	print('torch:')
+	a = torch.ones((4,3), requires_grad=True)
+	b = a.mean(dim=[0])
+	print(b)
+	c = b.sum()
+	print(c)
+	c.backward()
+	print(a.grad)
+
 # test_dot()
 # test_tensoroverwrite()
 # test_dagviz()
 # test_shapeops()
-test_conv()
+# test_conv()
+test_dimsum()
