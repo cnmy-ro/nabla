@@ -1,6 +1,7 @@
 import numpy as np
 import nabla
 from nabla import Tensor
+import torch
 
 
 def test_mul():
@@ -78,7 +79,36 @@ def test_shapeops():
 	print(a[1:3, :])
 
 
+def test_conv():
+	print("nabla:")
+	a = Tensor(np.arange(0,8).astype(float), requires_grad=True)
+	b = Tensor(np.array([-1., 0, 0., 1.]), requires_grad=True)
+	c = nabla.conv1d(a,b)
+	print(a)
+	print(b)
+	print(c)
+	d = c.sum()
+	d.backward(grad=np.array([1.]))
+	print(a.grad)
+	print(b.grad)
+	# nabla.show_dag(d)
+
+	print()
+
+	print("torch:")
+	a = torch.arange(0.,8., dtype=torch.float32, requires_grad=True)
+	b = torch.tensor(np.array([-1., 0., 0. ,1.]), dtype=torch.float32, requires_grad=True)
+	c = torch.conv1d(a.unsqueeze(0).unsqueeze(0), b.unsqueeze(0).unsqueeze(0))
+	print(a)
+	print(b)
+	print(c)
+	d = c.sum()
+	d.backward()
+	print(a.grad)
+	print(b.grad)
+
 # test_dot()
 # test_tensoroverwrite()
-test_dagviz()
+# test_dagviz()
 # test_shapeops()
+test_conv()

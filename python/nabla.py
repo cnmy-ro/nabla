@@ -22,11 +22,11 @@ def show_dag(tensor, view_img=True):
         else:                                                      parents = tnsr.parents
         if parents is not None:
             for i in range(len(parents)):
-                from_node = f"{(parents[i].op.__class__.__name__)} {parents[i].name}"
-                to_node = f"{tnsr.op.__class__.__name__} {tnsr.name}"
+                from_node = f"{(parents[i].op.__class__.__name__)} -> {parents[i].name}"
+                to_node = f"{tnsr.op.__class__.__name__} -> {tnsr.name}"
                 graph.edge(from_node, to_node, parents[i].name)
                 traverse_dag(parents[i])
-    traverse_dag(tensor)    
+    traverse_dag(tensor)
     if view_img:
         graph.render(directory='/tmp', view=False)
         img = plt.imread(f"/tmp/nabla_dag_{tensor.name}.gv.png")  
@@ -194,19 +194,48 @@ class Sum(Operator):
     def fx(self, x):     return x.data.sum(keepdims=True)
     def vjp(self, y, x): return [np.full(x.shape, y.grad * 1.)]
 
+class AvgPool1D(Operator):
+    def fx(self, x): 
+        # TODO
+        pass
+    def vjp(self, y, x): 
+        # TODO
+        pass
+
+class AvgPool2D(Operator):
+    def fx(self, x1): 
+        # TODO
+        pass
+    def vjp(self, y, x): 
+        # TODO
+        pass
+
 # Shape-altering binary ops
 
 class Dot(Operator):
     def fx(self, x1, x2):     return x1.data @ x2.data
     def vjp(self, y, x1, x2): return [y.grad @ x2.data.T, x1.data.T @ y.grad]
 
+class Linear(Operator):  # TODO
+    def fx(self, x1, x2):     pass
+    def vjp(self, y, x1, x2): pass
+
 class Conv1D(Operator):
-    def fx(self, x1, x2):
-        # TODO
-        pass
-    def vjp(self, y, x1, x2): 
-        # TODO
-        pass
+    def __init__(self, stride=1, padding=0):
+        self.kernel_size, self.stride, self.padding = None, stride, padding # TODO: implement stride, padding, dilation, bias
+    def fx(self, x, kernel):
+        # assert len(x.shape) == 3 and len(kernel) == 3  # TODO: implement multichannel conv with batch support
+        self.kernel_size = kernel.shape[0]
+        y = np.zeros(x.shape[0] - int(self.kernel_size-1))
+        for i in range(y.shape[0]):
+            y[i] = np.sum(kernel.data * x.data[i : i + self.kernel_size])
+        return y
+    def vjp(self, y, x, kernel):
+        x_grad, kernel_grad = np.zeros_like(x.data), np.zeros_like(kernel.data)
+        for i in range(y.shape[0]):
+            x_grad[i : i + self.kernel_size] += y.grad[i] * kernel.data
+            kernel_grad += y.grad[i] * x.data[i : i + self.kernel_size]
+        return [x_grad, kernel_grad]
 
 class Conv2D(Operator):
     def fx(self, x1, x2): 
@@ -237,23 +266,17 @@ class Permute(Operator):
     def vjp(self, y, x):         return [y.grad.transpose(self.dim_ord)]
     
 class Stack(Operator):
-    def __init__(self, dim):
-        self.dim = dim
-    def fx(self, x_list): 
-        return np.stack([x.data for x in x_list], axis=self.dim)
+    def __init__(self, dim):   self.dim = dim
+    def fx(self, x_list):      return np.stack([x.data for x in x_list], axis=self.dim)
     def vjp(self, y, *x_list):
         x_grad_list = np.split(y.grad, len(x_list), axis=self.dim)
         return [x_grad.squeeze(axis=self.dim) for x_grad in x_grad_list]
 
 class Cat(Operator):
-    def __init__(self, dim):
-        self.dim = dim
-        self.x_dimsize_list = None
-    def fx(self, x_list): 
-        self.x_dimsize_list = [x.shape[self.dim] for x in x_list]
-        return np.concatenate([x.data for x in x_list], axis=self.dim)
+    def __init__(self, dim):   self.dim = dim
+    def fx(self, x_list):      return np.concatenate([x.data for x in x_list], axis=self.dim)
     def vjp(self, y, *x_list): 
-        x_grad_list = np.split(y.grad, len(x_list), axis=self.dim)
+        x_grad_list = np.split(y.grad, [x.shape[self.dim] for x in x_list], axis=self.dim)
         return x_grad_list
 
 # ---
@@ -267,6 +290,7 @@ def randint(start, end, shape, requires_grad=False): return Tensor(np.random.ran
 def stack(x_list, dim):                              return Stack(dim)(x_list)
 def cat(x_list, dim):                                return Cat(dim)(x_list)
 def repeat(x, repeats, dim):                         return Cat(dim)([x for _ in range(repeats)])
+def conv1d(x, kernel, stride=1, padding=0):          return Conv1D(stride, padding)(x, kernel)
 
 # ---
 # Internal utils
