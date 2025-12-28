@@ -120,7 +120,7 @@ class Operator(ABC):
     def vjp(self, y: Tensor, *args: Tensor) -> List[np.ndarray]:
         """
         Vector-Jacobian product.
-        Implicitly computes J.T-dot-grad without having to materialize the massive J.
+        Implicitly computes ygrad.T-dot-J without having to materialize the massive J.
         
         Args:
             y: result tensor of this op (i.e. of the fx function)
