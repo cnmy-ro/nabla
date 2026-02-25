@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/cnmy-ro/nabla/main/docs/logo.png">
+  <img src="docs/logo.png"  width="300">
 </p>
 
 
