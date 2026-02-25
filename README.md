@@ -3,9 +3,7 @@
 </p>
 
 
-# Nabla
-
-Minimal implementation of reverse-mode automatic differentiation.
+Nabla is minimal implementation of reverse-mode automatic differentiation.
 
 - Python version:
 	- `python/nabla.py`: Thin autodiff wrapper over Numpy with PyTorch-like API
