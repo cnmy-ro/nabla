@@ -1,6 +1,9 @@
 __pycache__
-python_examples/outputs
-c/test
-c_examples/tiny_ddpm
-
+.ipynb_checkpoints
 .vscode
+.DS_STORE
+.wandb
+
+python_examples/outputs
+tests/c/test
+c_examples/tiny_ddpm

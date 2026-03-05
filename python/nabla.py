@@ -103,12 +103,9 @@ class Operator(ABC):
             if isinstance(args[i], float) or isinstance(args[i], int):
                 args[i] = Tensor(np.array(args[i]))
 
-        y = self.fx(*args)
-        y = Tensor(y)
+        y = Tensor(self.fx(*args))
         if _grad_enabled:
-            y.requires_grad = True
-            y.op = self
-            y.parents = args
+            y.op, y.parents, y.requires_grad = self, args, True
         return y
 
     @abstractmethod
@@ -133,7 +130,7 @@ class Operator(ABC):
 # ---
 # Operator classes
 
-# Point-wise unary ops
+#   Point-wise unary ops
 
 class Neg(Operator):
     def fx(self, x):     return -x.data
@@ -161,7 +158,7 @@ class Tanh(Operator):
     def fx(self, x):     return np.tanh(x.data)
     def vjp(self, y, x): return [y.grad * (1. - np.tanh(x.data)**2)]
 
-# Point-wise binary ops
+#   Point-wise binary ops
 
 class Add(Operator):
     def fx(self, x1, x2):     return x1.data + x2.data
@@ -187,7 +184,7 @@ class Pow(Operator):
         else:                x2_grad = np.zeros_like(x2.data)
         return [x1_grad, x2_grad]
 
-# Shape-altering unary ops
+#   Shape-altering unary ops
 
 class Sum(Operator):
     def __init__(self, dim=None): self.dim = tuple(dim) if isinstance(dim, list) else dim
@@ -212,7 +209,7 @@ class AvgPool2D(Operator):
     def fx(self, x):         pass
     def vjp(self, y, x):     pass
 
-# Shape-altering binary ops
+#   Shape-altering binary ops
 
 class Dot(Operator):
     def fx(self, x1, x2):     return x1.data @ x2.data
@@ -245,7 +242,7 @@ class Conv2D(Operator):
     def fx(self, x, kernel):         pass
     def vjp(self, y, x, kernel):     pass
 
-# Shape transformation ops
+#   Shape transformation ops
 
 class Slice(Operator):
     def __init__(self, idx): self.idx = idx
