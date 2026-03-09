@@ -3,19 +3,19 @@ Nabla functional form
 """
 
 # nabla core module:
-# - Nabla differential functions:
-#   - grad, vjp, jvp, jac, hess, divergence, curl, laplacian
+# - Core abstractions: tensor, function (operating on tensors), transform (operating on functions)
 # - Tensor class
-# - Tensor operator functions
-#   - Arithmetic ops: neg, add, sub, mul, div, exp, log
-#   - Shapeshift ops: sum, prod, vecdot, matmul, squeeze, unsqueeze, stack, repeat, cat, permute
-#   - Indexing ops: index, slice, where, argwhere
-#   - Misc math ops: thresholding, etc.
-# - Convenience funcs:
-#   - Zeros, ones, rand, randn, randint,  
+# - Tensor functions:
+#   - Arithmetic: neg, add, sub, mul, div, exp, log
+#   - Shapeshift: sum, prod, vecdot, matmul, squeeze, unsqueeze, stack, repeat, cat, permute
+#   - Indexing: index, slice, where, argwhere
+#   - Misc math: thresholding, etc.
+#   - Init: empty, zeros, ones, rand, randn, randint, etc.
+# - Differential transforms:
+#   - grad, vjp, jvp, jac, hess, divergence, curl, laplacian
 
 # nabla.nn module:
-# - Batched ops for fixed tensor shapes: linear, conv, attention
+# - Batched functions for fixed tensor shapes: linear, conv, attention
 # - Activation functions: relu, leakyrelu, sigmoid, tanh
 # - Optimizers: GD, Adam
 
@@ -26,5 +26,5 @@ Nabla functional form
 # nabla.phy module:  for physics and imaging
 # - FFT
 # - Reprs (grid-based or continuous): measurement, latents (image, etc.)
-# - Forward ops
+# - Forward operators
 # - Inversion routines
